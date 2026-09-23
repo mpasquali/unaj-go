@@ -624,6 +624,8 @@ class UnajARApp {
 
       const itemEl = document.createElement('div');
       itemEl.className = `dest-item-card ${isCurrentTarget ? 'is-active-target' : ''}`;
+      itemEl.setAttribute('role', 'button');
+      itemEl.setAttribute('tabindex', '0');
       itemEl.innerHTML = `
         <div class="dest-item-icon" style="background-color: ${poi.color}">
           <span>${poi.icon || '📍'}</span>
@@ -636,14 +638,91 @@ class UnajARApp {
           <p class="dest-item-sub">${poi.subtitle}</p>
           ${distance !== null ? `<span class="dest-item-dist">📍 a ${distance} metros</span>` : ''}
         </div>
-        <button class="btn-start-route">${isCurrentTarget ? 'En Curso' : 'Ir 🚀'}</button>
+        <button class="btn-start-route" type="button" aria-label="Ir hacia ${poi.name}">${isCurrentTarget ? 'En Curso' : 'Ir 🚀'}</button>
       `;
 
-      itemEl.addEventListener('click', (e) => {
-        e.stopPropagation();
+      const btnStartRoute = itemEl.querySelector('.btn-start-route');
+
+      let lastSelectTime = 0;
+      let cardTouchStartX = 0;
+      let cardTouchStartY = 0;
+      let btnTouchStartX = 0;
+      let btnTouchStartY = 0;
+
+      const executeRouteSelection = (e) => {
+        if (e) {
+          e.stopPropagation();
+          // Debounce contra clicks sintéticos en móviles (300ms delay)
+          if (e.type === 'click' && Date.now() - lastSelectTime < 600) {
+            if (e.cancelable) e.preventDefault();
+            return;
+          }
+          if (e.type === 'touchend' || e.type === 'touchstart') {
+            lastSelectTime = Date.now();
+          }
+          if (e.cancelable && e.type !== 'touchstart') {
+            e.preventDefault();
+          }
+        }
         this.calculateAndStartRoute(poi);
         this.closeDestinationPicker();
-      });
+      };
+
+      // 1. Manejo táctil y de clic en el botón "Ir" (con e.stopPropagation() explícito)
+      if (btnStartRoute) {
+        const onBtnTouchStart = (e) => {
+          e.stopPropagation(); // Evita conflictos con la tarjeta contenedora y el fondo
+          if (e.touches && e.touches[0]) {
+            btnTouchStartX = e.touches[0].clientX;
+            btnTouchStartY = e.touches[0].clientY;
+          }
+        };
+
+        const onBtnTouchEnd = (e) => {
+          e.stopPropagation(); // Evita que se propague a la tarjeta
+          if (e.changedTouches && e.changedTouches[0]) {
+            const dx = Math.abs(e.changedTouches[0].clientX - btnTouchStartX);
+            const dy = Math.abs(e.changedTouches[0].clientY - btnTouchStartY);
+            // Si el dedo se movió más de 12px, es un gesto de scroll de la lista
+            if (dx > 12 || dy > 12) return;
+          }
+          executeRouteSelection(e);
+        };
+
+        btnStartRoute.onclick = executeRouteSelection;
+        btnStartRoute.ontouchstart = onBtnTouchStart;
+        btnStartRoute.ontouchend = onBtnTouchEnd;
+        btnStartRoute.addEventListener('click', executeRouteSelection);
+        btnStartRoute.addEventListener('touchstart', onBtnTouchStart, { passive: false });
+        btnStartRoute.addEventListener('touchend', onBtnTouchEnd, { passive: false });
+        btnStartRoute.addEventListener('pointerdown', (e) => e.stopPropagation());
+      }
+
+      // 2. Manejo táctil y de clic en toda la tarjeta de la ubicación
+      const onCardTouchStart = (e) => {
+        if (e.touches && e.touches[0]) {
+          cardTouchStartX = e.touches[0].clientX;
+          cardTouchStartY = e.touches[0].clientY;
+        }
+      };
+
+      const onCardTouchEnd = (e) => {
+        if (e.changedTouches && e.changedTouches[0]) {
+          const dx = Math.abs(e.changedTouches[0].clientX - cardTouchStartX);
+          const dy = Math.abs(e.changedTouches[0].clientY - cardTouchStartY);
+          // Si el dedo se movió más de 12px, es un gesto de scroll de la lista
+          if (dx > 12 || dy > 12) return;
+        }
+        executeRouteSelection(e);
+      };
+
+      itemEl.onclick = executeRouteSelection;
+      itemEl.ontouchstart = onCardTouchStart;
+      itemEl.ontouchend = onCardTouchEnd;
+      itemEl.addEventListener('click', executeRouteSelection);
+      itemEl.addEventListener('touchstart', onCardTouchStart, { passive: true });
+      itemEl.addEventListener('touchend', onCardTouchEnd, { passive: false });
+      itemEl.addEventListener('pointerdown', (e) => e.stopPropagation());
 
       this.destListContainer.appendChild(itemEl);
     });

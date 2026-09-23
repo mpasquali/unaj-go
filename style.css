@@ -744,10 +744,15 @@ body, html {
 .destination-list {
   padding: 12px 16px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  pointer-events: auto !important;
+  touch-action: pan-y;
+  position: relative;
+  z-index: 202 !important;
 }
 
 .dest-item-card {
@@ -760,13 +765,24 @@ body, html {
   border-radius: 14px;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.25);
+  user-select: none;
+  -webkit-user-select: none;
   transition: all 0.15s ease;
+  position: relative;
+  z-index: 203 !important;
 }
 
 .dest-item-card:hover {
   background: rgba(30, 41, 59, 0.95);
   border-color: #38bdf8;
   transform: translateX(3px);
+}
+
+.dest-item-card:active {
+  background: rgba(30, 41, 59, 0.98);
+  transform: scale(0.98);
 }
 
 .dest-item-card.is-active-target {
@@ -783,17 +799,20 @@ body, html {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  pointer-events: none !important;
 }
 
 .dest-item-info {
   flex: 1;
   overflow: hidden;
+  pointer-events: none !important;
 }
 
 .dest-item-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  pointer-events: none !important;
 }
 
 .dest-item-title {
@@ -803,6 +822,7 @@ body, html {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none !important;
 }
 
 .dest-item-floor {
@@ -812,6 +832,7 @@ body, html {
   font-weight: 800;
   padding: 1px 5px;
   border-radius: 6px;
+  pointer-events: none !important;
 }
 
 .dest-item-sub {
@@ -820,25 +841,46 @@ body, html {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none !important;
 }
 
 .dest-item-dist {
   font-size: 10px;
   color: #38bdf8;
   font-weight: 600;
+  pointer-events: none !important;
 }
 
 .btn-start-route {
   background: #0284c7;
   color: #fff;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 14px;
+  min-height: 36px;
+  min-width: 62px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.4);
+  user-select: none;
+  -webkit-user-select: none;
   flex-shrink: 0;
+  position: relative;
+  z-index: 204 !important;
+  transition: all 0.12s ease;
+}
+
+.btn-start-route:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.btn-start-route:active {
+  background: #0369a1;
+  transform: scale(0.93);
 }
 
 .dest-empty-state {
