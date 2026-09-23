@@ -311,42 +311,104 @@ class UnajARApp {
       });
     });
 
-    // 9. Selector de Destino Modal & Búsqueda con Validación Previa
+    // 9. Selector de Destino Modal & Búsqueda con Soporte Táctil Móvil Inmediato
     if (this.btnOpenDestPicker) {
-      this.btnOpenDestPicker.addEventListener('click', (e) => {
-        const isBadgeClick = e.target.closest('#search-btn-badge');
-        
-        // Si el usuario hace clic específicamente en la insignia "Ruta"
-        if (isBadgeClick) {
+      let lastHandledTouchTime = 0;
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      const handleSearchTrigger = (e) => {
+        // Evitar doble ejecución en móviles (touchend seguido de click sintetizado 300ms después)
+        if (e.type === 'click' && Date.now() - lastHandledTouchTime < 600) {
+          e.preventDefault();
           e.stopPropagation();
-          // Validación Temprana obligatoria
+          return;
+        }
+
+        if (e.type === 'touchend' || e.type === 'touchstart') {
+          lastHandledTouchTime = Date.now();
+        }
+
+        e.stopPropagation();
+        if (e.cancelable && e.type !== 'touchstart') {
+          e.preventDefault();
+        }
+
+        // Determinar si el toque/clic fue específicamente en la insignia "Ruta"
+        const targetEl = e.target;
+        const isBadgeClick = Boolean(
+          targetEl &&
+          (targetEl.id === 'search-btn-badge' || (targetEl.closest && targetEl.closest('#search-btn-badge')))
+        );
+
+        // Si el usuario toca específicamente la insignia "Ruta"
+        if (isBadgeClick) {
           if (!this.selectedDestination) {
             this.showToast('⚠️ No hay ningún destino seleccionado para iniciar la ruta.', 3500);
             this.openDestinationPicker();
-            return; // Corta la ejecución inmediatamente sin tocar estados de carga
+            return;
           }
           this.searchRoute(this.selectedDestination);
           return;
         }
 
-        // Clic general en la barra de búsqueda
+        // Toque general en el botón/input de búsqueda -> Abre el modal inmediatamente al primer toque
         this.openDestinationPicker();
-      });
+      };
+
+      // Registrar listener para clicks de mouse (PC / emulador)
+      this.btnOpenDestPicker.addEventListener('click', handleSearchTrigger);
+
+      // Registrar listeners táctiles nativos para respuesta inmediata en móviles (touchstart + touchend)
+      this.btnOpenDestPicker.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches[0]) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      this.btnOpenDestPicker.addEventListener('touchend', (e) => {
+        if (e.changedTouches && e.changedTouches[0]) {
+          const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+          const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+          // Si el desplazamiento fue mayor a 12px, se considera scroll/panning y no un tap
+          if (deltaX > 12 || deltaY > 12) {
+            return;
+          }
+        }
+        handleSearchTrigger(e);
+      }, { passive: false });
+
+      // Soporte táctil directo sobre la insignia "Ruta"
+      if (this.searchBtnBadge) {
+        this.searchBtnBadge.addEventListener('touchend', (e) => {
+          e.stopPropagation();
+          handleSearchTrigger(e);
+        }, { passive: false });
+      }
     }
 
     if (this.btnCloseDestPicker) {
-      this.btnCloseDestPicker.addEventListener('click', () => {
+      const handleClose = (e) => {
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
         this.closeDestinationPicker();
-      });
+      };
+      this.btnCloseDestPicker.addEventListener('click', handleClose);
+      this.btnCloseDestPicker.addEventListener('touchend', handleClose, { passive: false });
     }
 
-    // Cerrar modal al hacer clic en el fondo semitransparente
+    // Cerrar modal al hacer clic/toque en el fondo semitransparente
     if (this.destPickerModal) {
-      this.destPickerModal.addEventListener('click', (e) => {
+      const handleBackdrop = (e) => {
         if (e.target === this.destPickerModal) {
+          e.stopPropagation();
+          if (e.cancelable) e.preventDefault();
           this.closeDestinationPicker();
         }
-      });
+      };
+      this.destPickerModal.addEventListener('click', handleBackdrop);
+      this.destPickerModal.addEventListener('touchend', handleBackdrop, { passive: false });
     }
 
     // Filtrado en vivo y validación al presionar Enter en el input de búsqueda
@@ -373,30 +435,41 @@ class UnajARApp {
 
     // 11. Iniciar ruta desde tarjeta de detalle con Validación
     if (this.btnStartNavFromDetail) {
-      this.btnStartNavFromDetail.addEventListener('click', (e) => {
+      const handleStartNav = (e) => {
         e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
         if (!this.selectedPOIForDetail) {
           this.showToast('⚠️ No hay ningún punto seleccionado.', 3000);
           return;
         }
         this.calculateAndStartRoute(this.selectedPOIForDetail);
         this.detailModal.classList.remove('active');
-      });
+      };
+      this.btnStartNavFromDetail.addEventListener('click', handleStartNav);
+      this.btnStartNavFromDetail.addEventListener('touchend', handleStartNav, { passive: false });
     }
 
-    // 12. Cerrar modal de detalles (y al hacer clic en backdrop)
+    // 12. Cerrar modal de detalles (y al hacer clic/toque en backdrop)
     if (this.btnCloseDetail) {
-      this.btnCloseDetail.addEventListener('click', () => {
+      const handleCloseDetail = (e) => {
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
         this.detailModal.classList.remove('active');
-      });
+      };
+      this.btnCloseDetail.addEventListener('click', handleCloseDetail);
+      this.btnCloseDetail.addEventListener('touchend', handleCloseDetail, { passive: false });
     }
 
     if (this.detailModal) {
-      this.detailModal.addEventListener('click', (e) => {
+      const handleDetailBackdrop = (e) => {
         if (e.target === this.detailModal) {
+          e.stopPropagation();
+          if (e.cancelable) e.preventDefault();
           this.detailModal.classList.remove('active');
         }
-      });
+      };
+      this.detailModal.addEventListener('click', handleDetailBackdrop);
+      this.detailModal.addEventListener('touchend', handleDetailBackdrop, { passive: false });
     }
   }
 
@@ -457,16 +530,25 @@ class UnajARApp {
 
   openDestinationPicker() {
     this.setLoading(false); // Reseteo preventivo
+    if (!this.destPickerModal) return;
+
     this.destPickerModal.classList.add('active');
+
     if (this.destSearchInput) {
       this.destSearchInput.value = '';
-      setTimeout(() => this.destSearchInput.focus(), 150);
+      try {
+        this.destSearchInput.focus({ preventScroll: true });
+      } catch (e) {
+        // Fallback para navegadores móviles con políticas estrictas de foco
+      }
     }
     this.renderDestinationList('');
   }
 
   closeDestinationPicker() {
-    this.destPickerModal.classList.remove('active');
+    if (this.destPickerModal) {
+      this.destPickerModal.classList.remove('active');
+    }
     this.setLoading(false);
   }
 

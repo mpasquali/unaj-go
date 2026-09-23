@@ -238,8 +238,9 @@ body, html {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 40; /* Por encima de HUD y capas inferiores */
+  z-index: 70 !important; /* Muy por encima del canvas de la cámara y marcadores AR */
   pointer-events: auto !important;
+  touch-action: manipulation !important;
 }
 
 .destination-search-btn {
@@ -259,10 +260,14 @@ body, html {
   font-weight: 600;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.25);
+  user-select: none;
+  -webkit-user-select: none;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   transition: all 0.15s ease;
   position: relative;
-  z-index: 41;
+  z-index: 71 !important;
 }
 
 .destination-search-btn:hover {
@@ -271,8 +276,14 @@ body, html {
   transform: translateY(-1px);
 }
 
+.destination-search-btn:active {
+  transform: scale(0.98);
+  background: rgba(30, 41, 59, 0.98);
+}
+
 .search-icon {
   font-size: 14px;
+  pointer-events: none !important;
 }
 
 #search-btn-label {
@@ -281,6 +292,7 @@ body, html {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none !important;
 }
 
 .search-badge {
@@ -294,6 +306,13 @@ body, html {
   transition: background-color 0.2s ease;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation !important;
+  position: relative;
+  z-index: 72 !important;
+}
+
+.search-badge:active {
+  transform: scale(0.94);
 }
 
 .search-badge.loading {
@@ -622,14 +641,19 @@ body, html {
 /* ======================================================== */
 .destination-modal {
   display: none !important;
-  position: absolute;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.75);
-  backdrop-filter: blur(10px);
-  z-index: 90;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 200 !important;
   align-items: flex-end;
   justify-content: center;
   pointer-events: none !important;
+  touch-action: pan-y;
 }
 
 .destination-modal.active {
@@ -643,12 +667,16 @@ body, html {
   border-radius: 26px 26px 0 0;
   width: 100%;
   max-width: 540px;
-  max-height: 82vh;
+  max-height: 85vh;
+  max-height: 85dvh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.25s ease-out;
   box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.9);
   pointer-events: auto !important;
+  touch-action: pan-y;
+  position: relative;
+  z-index: 201 !important;
 }
 
 .modal-sheet-header {
@@ -1083,15 +1111,20 @@ body, html {
 /* Modal de Detalle de Edificio / Aula */
 .detail-modal {
   display: none !important;
-  position: absolute;
-  inset: 0;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background: rgba(2, 6, 23, 0.7);
   backdrop-filter: blur(8px);
-  z-index: 85;
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 190 !important;
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
   pointer-events: none !important;
+  touch-action: pan-y;
 }
 
 .detail-modal.active {
