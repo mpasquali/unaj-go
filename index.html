@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>UNAJ Go - Visor AR Campus Multi-Piso</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- 1. Video en vivo de la cámara (o fondo simulado si no hay webcam en PC) -->
+    <video id="camera-feed" playsinline autoplay muted></video>
+    <div id="simulated-background" class="virtual-bg"></div>
+
+    <!-- 2. Capa de Carteles Flotantes AR -->
+    <div id="markers-container"></div>
+
+    <!-- 3. Telemetría HUD Superior -->
+    <div id="hud-overlay">
+      <div class="hud-pill">
+        <span>RUMBO</span>
+        <span id="hud-heading">0° (N)</span>
+      </div>
+      <div class="hud-pill">
+        <span>NIVEL</span>
+        <span id="hud-floor">PB (0)</span>
+      </div>
+      <div class="hud-pill">
+        <span>UBICACIÓN</span>
+        <span id="hud-gps">Buscando...</span>
+      </div>
+    </div>
+
+    <!-- 4. Filtros de Categoría Rápidos -->
+    <div id="category-bar">
+      <button class="filter-btn active" data-category="todas">Todos</button>
+      <button class="filter-btn" data-category="academica">Aulas</button>
+      <button class="filter-btn" data-category="administrativa">Trámites</button>
+      <button class="filter-btn" data-category="servicios">Servicios</button>
+    </div>
+
+    <!-- 5. SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4) -->
+    <div id="floor-elevator" class="floor-selector">
+      <div class="elevator-header">🛗 PISO</div>
+      <button class="floor-btn" data-floor="4" title="Cuarto Piso (Posgrado & Datacenter)">4°P</button>
+      <button class="floor-btn" data-floor="3" title="Tercer Piso (Investigación & Seminarios)">3°P</button>
+      <button class="floor-btn" data-floor="2" title="Segundo Piso (Institutos & Idiomas)">2°P</button>
+      <button class="floor-btn" data-floor="1" title="Primer Piso (Aulas Teóricas & Redes)">1°P</button>
+      <button class="floor-btn active" data-floor="0" title="Planta Baja (Accesos & Rectorado)">PB</button>
+      <button class="floor-btn" data-floor="-1" title="Subsuelo (Archivo & Geología)">SS</button>
+      <button class="floor-btn all-floors" data-floor="all" title="Ver todos los pisos a la vez">ALL</button>
+    </div>
+
+    <!-- 6. Guía Radar Direccional cuando el objetivo está fuera del campo de visión -->
+    <div id="radar-guide">👈 Gira para ver los edificios</div>
+
+    <!-- 7. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
+    <div id="virtual-controls" class="virtual-controls-panel">
+      <div class="controls-header">
+        <span class="controls-title">🎮 Controles Virtuales (Simulación PC)</span>
+        <span class="drag-hint">💡 Arrastra la pantalla para rotar en 360°</span>
+      </div>
+      
+      <!-- Selector de Punto de Partida y Nivel de Altura en Simulación (Pisos -1 a 4) -->
+      <div class="control-grid">
+        <div class="control-row">
+          <label for="select-start-point">Parado en:</label>
+          <select id="select-start-point" class="controls-select">
+            <option value="plaza_central">Plaza Central (Frente a Mosconi)</option>
+            <option value="acceso_calchaqui">Entrada Peatonal (Av. Calchaquí)</option>
+            <option value="patio_ypf">Patio Laboratorios YPF</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <label for="select-sim-floor">Tu Piso Actual:</label>
+          <select id="select-sim-floor" class="controls-select">
+            <option value="4">Piso 4 (Altura: 39.0 m)</option>
+            <option value="3">Piso 3 (Altura: 35.5 m)</option>
+            <option value="2">Piso 2 (Altura: 32.0 m)</option>
+            <option value="1">Piso 1 (Altura: 28.5 m)</option>
+            <option value="0" selected>Planta Baja (Altura: 25.0 m)</option>
+            <option value="-1">Subsuelo (Altura: 21.5 m)</option>
+            <option value="all">Ver Todos los Pisos</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Slider de Brújula / Dirección 360° -->
+      <div class="control-row compass-row">
+        <button id="btn-turn-left" class="btn-step-turn" title="Girar 30° a la izquierda">⟲ -30°</button>
+        <div class="slider-wrapper">
+          <input type="range" id="compass-slider" min="0" max="360" value="0" step="1">
+          <div class="compass-ticks">
+            <span>N (0°)</span>
+            <span>E (90°)</span>
+            <span>S (180°)</span>
+            <span>O (270°)</span>
+            <span>N (360°)</span>
+          </div>
+        </div>
+        <button id="btn-turn-right" class="btn-step-turn" title="Girar 30° a la derecha">⟳ +30°</button>
+      </div>
+    </div>
+
+    <!-- 8. Modal de Detalle de Edificio / Aula (al tocar un cartel) -->
+    <div id="poi-detail-modal" class="detail-modal">
+      <div class="detail-card">
+        <button id="btn-close-detail" class="btn-close">&times;</button>
+        <div class="detail-header">
+          <span id="detail-icon" class="detail-icon">🏛️</span>
+          <div>
+            <h2 id="detail-title" class="detail-name">Edificio Mosconi</h2>
+            <p id="detail-subtitle" class="detail-sub">Rectorado & Aulas Magnas</p>
+          </div>
+        </div>
+        <p id="detail-description" class="detail-text">Descripción...</p>
+        <div class="detail-meta">
+          <span id="detail-distance" class="badge-distance">📍 45 metros</span>
+          <span id="detail-floor" class="badge-floor">Piso: Planta Baja</span>
+          <span id="detail-category" class="badge-category">Académica</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. Modal de Permisos y Bienvenida -->
+    <div id="permission-modal">
+      <div class="modal-content">
+        <div class="modal-logo">📍</div>
+        <h1 class="modal-title">UNAJ Go</h1>
+        <p class="modal-subtitle">Realidad Aumentada Multi-Piso</p>
+        <p class="modal-description">
+          Explora los edificios, aulas y laboratorios de la <strong>Universidad Nacional Arturo Jauretche</strong> desde el subsuelo hasta el 4° piso.
+        </p>
+        <div class="modal-actions">
+          <button id="btn-simulate" class="btn-primary highlight">
+            🧪 Probar con Simulación (PC y Campus Virtual)
+          </button>
+          <button id="btn-start" class="btn-secondary">
+            📱 Activar en Celular (Cámara y GPS Real)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controlador principal -->
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
