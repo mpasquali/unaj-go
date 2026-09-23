@@ -284,7 +284,8 @@ class UnajARApp {
     // 7. Arrastrar con mouse o touch en pantalla para girar la vista 360°
     const container = document.getElementById('app-container');
     container.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button, select, input, .detail-card, .marker-card, .floor-selector, .status-toast, .destination-modal-sheet, .nav-bottom-card')) return;
+      // Bloquear inicio de arrastre AR si se tocó cualquier control superior o interfaz
+      if (e.target.closest('button, select, input, #top-nav-bar, #floor-elevator, .destination-search-btn, .search-badge, .filter-btn, .floor-btn, .detail-card, .marker-card, .floor-selector, .status-toast, .destination-modal-sheet, .nav-bottom-card')) return;
       this.isDragging = true;
       this.lastPointerX = e.clientX;
     });
@@ -301,14 +302,29 @@ class UnajARApp {
       this.isDragging = false;
     });
 
+    // Aislamiento táctil de la barra superior para evitar conflictos con el visor AR
+    const topNavBar = document.getElementById('top-nav-bar');
+    if (topNavBar) {
+      topNavBar.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      topNavBar.addEventListener('pointerdown', (e) => e.stopPropagation());
+    }
+
+    const floorElevator = document.getElementById('floor-elevator');
+    if (floorElevator) {
+      floorElevator.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      floorElevator.addEventListener('pointerdown', (e) => e.stopPropagation());
+    }
+
     // 8. Filtros de categoría (Garantía de interactividad y pointer-events)
     this.filterButtons.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
+      const handleCategory = (e) => {
         e.stopPropagation();
         this.filterButtons.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         this.activeCategory = btn.dataset.category;
-      });
+      };
+      btn.addEventListener('click', handleCategory);
+      btn.addEventListener('touchend', handleCategory, { passive: false });
     });
 
     // 9. Selector de Destino Modal & Búsqueda con Soporte Táctil Móvil Inmediato
@@ -318,24 +334,27 @@ class UnajARApp {
       let touchStartY = 0;
 
       const handleSearchTrigger = (e) => {
-        // Evitar doble ejecución en móviles (touchend seguido de click sintetizado 300ms después)
-        if (e.type === 'click' && Date.now() - lastHandledTouchTime < 600) {
-          e.preventDefault();
+        // Detener propagación para evitar que el visor AR o canvas de fondo intercepte el toque
+        if (e && e.stopPropagation) {
           e.stopPropagation();
+        }
+
+        // Evitar doble ejecución en móviles (touchend seguido de click sintetizado 300ms después)
+        if (e && e.type === 'click' && Date.now() - lastHandledTouchTime < 600) {
+          if (e.cancelable) e.preventDefault();
           return;
         }
 
-        if (e.type === 'touchend' || e.type === 'touchstart') {
+        if (e && (e.type === 'touchend' || e.type === 'touchstart')) {
           lastHandledTouchTime = Date.now();
         }
 
-        e.stopPropagation();
-        if (e.cancelable && e.type !== 'touchstart') {
+        if (e && e.cancelable && e.type !== 'touchstart') {
           e.preventDefault();
         }
 
         // Determinar si el toque/clic fue específicamente en la insignia "Ruta"
-        const targetEl = e.target;
+        const targetEl = e ? e.target : null;
         const isBadgeClick = Boolean(
           targetEl &&
           (targetEl.id === 'search-btn-badge' || (targetEl.closest && targetEl.closest('#search-btn-badge')))
@@ -356,31 +375,49 @@ class UnajARApp {
         this.openDestinationPicker();
       };
 
-      // Registrar listener para clicks de mouse (PC / emulador)
+      this.handleSearchTrigger = handleSearchTrigger;
+
+      // Eventos táctiles explícitos (onTouchStart, onTouchEnd y onClick)
+      this.btnOpenDestPicker.onclick = handleSearchTrigger;
       this.btnOpenDestPicker.addEventListener('click', handleSearchTrigger);
 
-      // Registrar listeners táctiles nativos para respuesta inmediata en móviles (touchstart + touchend)
-      this.btnOpenDestPicker.addEventListener('touchstart', (e) => {
+      // onTouchStart: Detiene propagación inmediata al visor de realidad aumentada
+      const onTouchStartHandler = (e) => {
+        e.stopPropagation();
         if (e.touches && e.touches[0]) {
           touchStartX = e.touches[0].clientX;
           touchStartY = e.touches[0].clientY;
         }
-      }, { passive: true });
+      };
+      this.btnOpenDestPicker.ontouchstart = onTouchStartHandler;
+      this.btnOpenDestPicker.addEventListener('touchstart', onTouchStartHandler, { passive: false });
+      this.btnOpenDestPicker.addEventListener('pointerdown', (e) => e.stopPropagation());
 
-      this.btnOpenDestPicker.addEventListener('touchend', (e) => {
+      // onTouchEnd: Ejecución inmediata de apertura de modal al soltar el dedo
+      const onTouchEndHandler = (e) => {
+        e.stopPropagation();
         if (e.changedTouches && e.changedTouches[0]) {
           const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
           const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
-          // Si el desplazamiento fue mayor a 12px, se considera scroll/panning y no un tap
-          if (deltaX > 12 || deltaY > 12) {
+          // Si el desplazamiento fue mayor a 15px, se considera gesto de scroll y no un tap
+          if (deltaX > 15 || deltaY > 15) {
             return;
           }
         }
         handleSearchTrigger(e);
-      }, { passive: false });
+      };
+      this.btnOpenDestPicker.ontouchend = onTouchEndHandler;
+      this.btnOpenDestPicker.addEventListener('touchend', onTouchEndHandler, { passive: false });
 
-      // Soporte táctil directo sobre la insignia "Ruta"
+      // Soporte táctil explícito directo sobre la insignia "Ruta"
       if (this.searchBtnBadge) {
+        this.searchBtnBadge.onclick = handleSearchTrigger;
+        this.searchBtnBadge.ontouchstart = (e) => e.stopPropagation();
+        this.searchBtnBadge.ontouchend = (e) => {
+          e.stopPropagation();
+          handleSearchTrigger(e);
+        };
+        this.searchBtnBadge.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
         this.searchBtnBadge.addEventListener('touchend', (e) => {
           e.stopPropagation();
           handleSearchTrigger(e);

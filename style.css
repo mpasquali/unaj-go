@@ -243,6 +243,7 @@ body, html {
   touch-action: manipulation !important;
 }
 
+#btn-open-destination-picker,
 .destination-search-btn {
   display: flex;
   align-items: center;
@@ -295,6 +296,7 @@ body, html {
   pointer-events: none !important;
 }
 
+#search-btn-badge,
 .search-badge {
   background: #0284c7;
   color: #fff;
@@ -639,6 +641,7 @@ body, html {
 /* ======================================================== */
 /* MODAL SELECTOR DE DESTINOS / BUSCADOR                    */
 /* ======================================================== */
+#destination-picker-modal,
 .destination-modal {
   display: none !important;
   position: fixed !important;
@@ -656,9 +659,12 @@ body, html {
   touch-action: pan-y;
 }
 
+#destination-picker-modal.active,
 .destination-modal.active {
   display: flex !important;
   pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .destination-modal-sheet {
