@@ -67,7 +67,7 @@ body, html {
   width: 100%;
   height: 100%;
   z-index: 10;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 /* Cartel Flotante del Edificio / Aula */
@@ -76,7 +76,7 @@ body, html {
   display: flex;
   flex-direction: column;
   align-items: center;
-  pointer-events: auto;
+  pointer-events: auto !important;
   will-change: transform, left, top;
   cursor: pointer;
   transition: transform 0.08s ease-out;
@@ -199,6 +199,7 @@ body, html {
   justify-content: space-between;
   gap: 8px;
   z-index: 20;
+  pointer-events: none;
 }
 
 .hud-pill {
@@ -215,6 +216,7 @@ body, html {
   letter-spacing: 0.5px;
   color: #94a3b8;
   min-width: 85px;
+  pointer-events: auto;
 }
 
 .hud-pill span:last-child {
@@ -224,16 +226,20 @@ body, html {
   margin-top: 2px;
 }
 
-/* Barra Superior: Buscador de Destino + Filtros */
+/* ======================================================== */
+/* BARRA SUPERIOR: BUSCADOR DE DESTINO + FILTROS DE PISO    */
+/* Capa con pointer-events garantizados para evitar bloqueo */
+/* ======================================================== */
 #top-nav-bar {
   position: absolute;
   top: 65px;
   left: 14px;
-  right: 64px; /* Espacio para el elevador */
+  right: 64px; /* Espacio para no solaparse con el elevador */
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 22;
+  z-index: 40; /* Por encima de HUD y capas inferiores */
+  pointer-events: auto !important;
 }
 
 .destination-search-btn {
@@ -242,7 +248,7 @@ body, html {
   gap: 8px;
   width: 100%;
   max-width: 320px;
-  background: rgba(15, 23, 42, 0.88);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(56, 189, 248, 0.4);
@@ -251,9 +257,12 @@ body, html {
   color: #f1f5f9;
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   transition: all 0.15s ease;
+  position: relative;
+  z-index: 41;
 }
 
 .destination-search-btn:hover {
@@ -282,6 +291,14 @@ body, html {
   padding: 2px 7px;
   border-radius: 9999px;
   text-transform: uppercase;
+  transition: background-color 0.2s ease;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.search-badge.loading {
+  background: #f59e0b !important;
+  animation: pulse 1s infinite;
 }
 
 /* Barra de Filtros de Categoría */
@@ -290,6 +307,9 @@ body, html {
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 41;
 }
 
 #category-bar::-webkit-scrollbar {
@@ -298,16 +318,19 @@ body, html {
 
 .filter-btn {
   padding: 5px 12px;
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
   color: #cbd5e1;
   font-size: 11px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   transition: all 0.2s;
   white-space: nowrap;
+  position: relative;
+  z-index: 42;
 }
 
 .filter-btn.active {
@@ -317,7 +340,9 @@ body, html {
   box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
 }
 
-/* SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4) */
+/* ======================================================== */
+/* SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4)      */
+/* ======================================================== */
 .floor-selector {
   position: absolute;
   right: 12px;
@@ -326,13 +351,14 @@ body, html {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   padding: 6px 5px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  z-index: 25;
+  z-index: 45; /* Por encima de la barra para nunca ser bloqueado */
+  pointer-events: auto !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.65);
   max-height: calc(100vh - 220px);
   overflow-y: auto;
@@ -359,7 +385,8 @@ body, html {
   color: #94a3b8;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -393,7 +420,7 @@ body, html {
   display: none;
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  pointer-events: none !important;
   z-index: 35;
 }
 
@@ -401,7 +428,7 @@ body, html {
   display: block;
 }
 
-/* Flecha Direccional Dinámica Flotante */
+/* Flecha Direccional Dinámica Flotante (sin bloquear clicks de fondo) */
 .nav-compass-arrow-wrapper {
   position: absolute;
   bottom: 155px;
@@ -411,7 +438,7 @@ body, html {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  pointer-events: auto;
+  pointer-events: none !important;
 }
 
 .nav-arrow-dial {
@@ -420,6 +447,7 @@ body, html {
   will-change: transform;
   transition: transform 0.08s ease-out;
   filter: drop-shadow(0 6px 15px rgba(0, 0, 0, 0.7));
+  pointer-events: none !important;
 }
 
 .nav-arrow-svg {
@@ -444,6 +472,7 @@ body, html {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
   transition: background-color 0.25s ease;
+  pointer-events: auto;
 }
 
 /* Tarjeta Inferior de Ruta Activa */
@@ -465,7 +494,7 @@ body, html {
   justify-content: space-between;
   gap: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
-  pointer-events: auto;
+  pointer-events: auto !important;
   animation: slideUp 0.2s ease-out;
 }
 
@@ -555,7 +584,8 @@ body, html {
   border-radius: 12px;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   transition: all 0.15s;
   flex-shrink: 0;
 }
@@ -579,7 +609,7 @@ body, html {
   font-size: 14px;
   font-weight: 800;
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
-  pointer-events: auto;
+  pointer-events: auto !important;
   animation: bounce 1.2s infinite;
 }
 
@@ -588,10 +618,10 @@ body, html {
 }
 
 /* ======================================================== */
-/* MODAL SELECTOR DE DESTINOS / BUSCADOR */
+/* MODAL SELECTOR DE DESTINOS / BUSCADOR                    */
 /* ======================================================== */
 .destination-modal {
-  display: none;
+  display: none !important;
   position: absolute;
   inset: 0;
   background: rgba(2, 6, 23, 0.75);
@@ -599,10 +629,12 @@ body, html {
   z-index: 90;
   align-items: flex-end;
   justify-content: center;
+  pointer-events: none !important;
 }
 
 .destination-modal.active {
-  display: flex;
+  display: flex !important;
+  pointer-events: auto !important;
 }
 
 .destination-modal-sheet {
@@ -616,6 +648,7 @@ body, html {
   flex-direction: column;
   animation: slideUp 0.25s ease-out;
   box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.9);
+  pointer-events: auto !important;
 }
 
 .modal-sheet-header {
@@ -691,7 +724,8 @@ body, html {
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 10px 14px;
   border-radius: 14px;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   transition: all 0.15s ease;
 }
 
@@ -768,7 +802,8 @@ body, html {
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   flex-shrink: 0;
 }
 
@@ -802,7 +837,8 @@ body, html {
   border-radius: 8px;
   font-size: 10px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   transition: all 0.12s;
 }
 
@@ -848,14 +884,14 @@ body, html {
   z-index: 50;
   opacity: 0;
   transform: translateY(-8px);
-  pointer-events: none;
+  pointer-events: none !important;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .status-toast.active {
   opacity: 1;
   transform: translateY(0);
-  pointer-events: auto;
+  pointer-events: auto !important;
 }
 
 .btn-close-toast {
@@ -863,7 +899,8 @@ body, html {
   border: none;
   color: #cbd5e1;
   font-size: 20px;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   padding: 0 4px;
   line-height: 1;
   flex-shrink: 0;
@@ -887,6 +924,7 @@ body, html {
   display: none;
   white-space: nowrap;
   animation: bounce 1.8s infinite;
+  pointer-events: none;
 }
 
 @keyframes bounce {
@@ -911,6 +949,7 @@ body, html {
   padding: 14px 18px;
   z-index: 30;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+  pointer-events: auto !important;
 }
 
 .virtual-controls-panel.visible {
@@ -973,7 +1012,8 @@ body, html {
   font-size: 11px;
   font-weight: 600;
   outline: none;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .compass-row {
@@ -991,7 +1031,8 @@ body, html {
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   transition: all 0.15s;
 }
 
@@ -1015,6 +1056,7 @@ body, html {
   border-radius: 4px;
   outline: none;
   cursor: ew-resize;
+  pointer-events: auto !important;
 }
 
 #compass-slider::-webkit-slider-thumb {
@@ -1025,7 +1067,8 @@ body, html {
   background: #38bdf8;
   border: 2px solid #fff;
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .compass-ticks {
@@ -1038,19 +1081,21 @@ body, html {
 
 /* Modal de Detalle de Edificio / Aula */
 .detail-modal {
-  display: none;
+  display: none !important;
   position: absolute;
   inset: 0;
   background: rgba(2, 6, 23, 0.7);
   backdrop-filter: blur(8px);
-  z-index: 80;
+  z-index: 85;
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
+  pointer-events: none !important;
 }
 
 .detail-modal.active {
-  display: flex;
+  display: flex !important;
+  pointer-events: auto !important;
 }
 
 .detail-card {
@@ -1063,6 +1108,7 @@ body, html {
   max-width: 440px;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.9);
   animation: slideUp 0.25s ease-out;
+  pointer-events: auto !important;
 }
 
 @keyframes slideUp {
@@ -1078,7 +1124,8 @@ body, html {
   border: none;
   color: #94a3b8;
   font-size: 24px;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .detail-header {
@@ -1219,7 +1266,8 @@ body, html {
   border-radius: 14px;
   font-size: 14px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);
   transition: all 0.15s;
 }
@@ -1242,7 +1290,8 @@ body, html {
   border-radius: 14px;
   font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .btn-secondary:hover {

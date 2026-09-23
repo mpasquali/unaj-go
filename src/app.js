@@ -25,6 +25,10 @@ class UnajARApp {
     this.isCompassWorking = false;
     this.toastTimeout = null;
 
+    // Estado de Control y Carga (Evita bloqueos y congelamientos)
+    this.isLoading = false;
+    this.loadingSafetyTimeout = null;
+
     // Estado de Navegación y Destino
     this.activeDestination = null; // POI de destino seleccionado
     this.selectedPOIForDetail = null; // POI abierto en modal de detalles
@@ -68,6 +72,7 @@ class UnajARApp {
     // Selector de Destino Modal & Buscador
     this.btnOpenDestPicker = document.getElementById('btn-open-destination-picker');
     this.searchBtnLabel = document.getElementById('search-btn-label');
+    this.searchBtnBadge = document.getElementById('search-btn-badge');
     this.destPickerModal = document.getElementById('destination-picker-modal');
     this.btnCloseDestPicker = document.getElementById('btn-close-dest-picker');
     this.destSearchInput = document.getElementById('dest-search-input');
@@ -103,7 +108,49 @@ class UnajARApp {
     this.initEvents();
   }
 
-  showToast(message, duration = 4500) {
+  /**
+   * Gestión Segura del Estado Cargando:
+   * Incluye timeout de seguridad forzoso para asegurar que NUNCA se congele la interfaz.
+   */
+  setLoading(loading, message = 'Cargando...') {
+    this.isLoading = Boolean(loading);
+
+    // Cancelar cualquier timeout de seguridad previo
+    if (this.loadingSafetyTimeout) {
+      clearTimeout(this.loadingSafetyTimeout);
+      this.loadingSafetyTimeout = null;
+    }
+
+    if (this.isLoading) {
+      if (this.searchBtnBadge) {
+        this.searchBtnBadge.textContent = '⏳';
+        this.searchBtnBadge.classList.add('loading');
+      }
+      if (this.searchBtnLabel && !this.activeDestination) {
+        this.searchBtnLabel.textContent = message;
+      }
+
+      // RESPETO FORZOSO: Si pasan 2.5s sin respuesta, liberar la interfaz
+      this.loadingSafetyTimeout = setTimeout(() => {
+        if (this.isLoading) {
+          console.warn('Timeout de seguridad ejecutado: restableciendo isLoading = false');
+          this.setLoading(false);
+        }
+      }, 2500);
+    } else {
+      if (this.searchBtnBadge) {
+        this.searchBtnBadge.textContent = 'Ruta';
+        this.searchBtnBadge.classList.remove('loading');
+      }
+      if (this.searchBtnLabel) {
+        this.searchBtnLabel.textContent = this.activeDestination
+          ? `Ruta: ${this.activeDestination.shortName || this.activeDestination.name}`
+          : 'Buscar destino o aula...';
+      }
+    }
+  }
+
+  showToast(message, duration = 4000) {
     if (!this.toastEl || !this.toastMessageEl) return;
     this.toastMessageEl.textContent = message;
     this.toastEl.classList.add('active');
@@ -136,7 +183,8 @@ class UnajARApp {
 
     // 2. Selector de piso lateral (Elevador de niveles -1 a 4)
     this.floorButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const floorVal = btn.dataset.floor;
         this.setFloor(floorVal === 'all' ? 'all' : parseInt(floorVal, 10));
       });
@@ -171,7 +219,7 @@ class UnajARApp {
     if (this.btnWalkToDest) {
       this.btnWalkToDest.addEventListener('click', () => {
         if (!this.activeDestination) {
-          this.showToast('Primero selecciona un destino para acercarte a él.', 3000);
+          this.showToast('⚠️ Primero selecciona un destino para acercarte a él.', 3000);
           return;
         }
         const bearingToDest = calculateBearing(this.userLocation, this.activeDestination.coords);
@@ -238,18 +286,34 @@ class UnajARApp {
       this.isDragging = false;
     });
 
-    // 8. Filtros de categoría
+    // 8. Filtros de categoría (Garantía de interactividad y pointer-events)
     this.filterButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.filterButtons.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         this.activeCategory = btn.dataset.category;
       });
     });
 
-    // 9. Selector de Destino Modal & Búsqueda
+    // 9. Selector de Destino Modal & Búsqueda con Validación Previa
     if (this.btnOpenDestPicker) {
-      this.btnOpenDestPicker.addEventListener('click', () => {
+      this.btnOpenDestPicker.addEventListener('click', (e) => {
+        const isBadgeClick = e.target.closest('#search-btn-badge');
+        
+        // Si el usuario hace clic específicamente en la insignia "Ruta"
+        if (isBadgeClick) {
+          e.stopPropagation();
+          if (!this.activeDestination) {
+            this.showToast('⚠️ Selecciona primero un destino de la lista para iniciar la ruta.', 3500);
+            this.openDestinationPicker();
+          } else {
+            this.showToast(`Ruta activa hacia: ${this.activeDestination.name}`, 3000);
+          }
+          return;
+        }
+
+        // Clic general en la barra de búsqueda
         this.openDestinationPicker();
       });
     }
@@ -260,34 +324,105 @@ class UnajARApp {
       });
     }
 
+    // Cerrar modal al hacer clic en el fondo semitransparente
+    if (this.destPickerModal) {
+      this.destPickerModal.addEventListener('click', (e) => {
+        if (e.target === this.destPickerModal) {
+          this.closeDestinationPicker();
+        }
+      });
+    }
+
+    // Filtrado en vivo y validación al presionar Enter en el input de búsqueda
     if (this.destSearchInput) {
       this.destSearchInput.addEventListener('input', (e) => {
         this.renderDestinationList(e.target.value);
+      });
+
+      this.destSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleSearchEnterSubmit();
+        }
       });
     }
 
     // 10. Cancelar Navegación Activa
     if (this.btnCancelNav) {
-      this.btnCancelNav.addEventListener('click', () => {
+      this.btnCancelNav.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.cancelNavigation();
       });
     }
 
-    // 11. Iniciar ruta desde tarjeta de detalle
+    // 11. Iniciar ruta desde tarjeta de detalle con Validación
     if (this.btnStartNavFromDetail) {
-      this.btnStartNavFromDetail.addEventListener('click', () => {
-        if (this.selectedPOIForDetail) {
-          this.startNavigation(this.selectedPOIForDetail);
-          this.detailModal.classList.remove('active');
+      this.btnStartNavFromDetail.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!this.selectedPOIForDetail) {
+          this.showToast('⚠️ No hay ningún punto seleccionado.', 3000);
+          return;
         }
+        this.calculateAndStartRoute(this.selectedPOIForDetail);
+        this.detailModal.classList.remove('active');
       });
     }
 
-    // 12. Cerrar modal de detalles
+    // 12. Cerrar modal de detalles (y al hacer clic en backdrop)
     if (this.btnCloseDetail) {
       this.btnCloseDetail.addEventListener('click', () => {
         this.detailModal.classList.remove('active');
       });
+    }
+
+    if (this.detailModal) {
+      this.detailModal.addEventListener('click', (e) => {
+        if (e.target === this.detailModal) {
+          this.detailModal.classList.remove('active');
+        }
+      });
+    }
+  }
+
+  /**
+   * Validación y procesamiento cuando el usuario pulsa Enter en el buscador
+   */
+  handleSearchEnterSubmit() {
+    const query = this.destSearchInput ? this.destSearchInput.value.trim().toLowerCase() : '';
+
+    // Validación Previa: Input vacío
+    if (!query) {
+      this.showToast('⚠️ Escribe el nombre de un aula o edificio para buscar.', 3000);
+      this.setLoading(false);
+      return;
+    }
+
+    try {
+      this.setLoading(true, 'Buscando...');
+
+      const matches = CAMPUS_LOCATIONS.filter((loc) => {
+        return (
+          loc.name.toLowerCase().includes(query) ||
+          loc.subtitle.toLowerCase().includes(query) ||
+          loc.id.toLowerCase().includes(query) ||
+          getFloorLabel(loc.floor).toLowerCase().includes(query)
+        );
+      });
+
+      if (matches.length === 1) {
+        // Coincidencia exacta: trazar ruta directamente
+        this.calculateAndStartRoute(matches[0]);
+        this.closeDestinationPicker();
+      } else if (matches.length > 1) {
+        this.showToast(`Se encontraron ${matches.length} resultados. Pulsa sobre el deseado.`, 3500);
+      } else {
+        this.showToast('⚠️ No se encontró ningún aula o edificio con ese nombre.', 3500);
+      }
+    } catch (err) {
+      console.error('Error en búsqueda Enter:', err);
+      this.showToast('⚠️ Ocurrió un error al procesar la búsqueda.', 3000);
+    } finally {
+      this.setLoading(false);
     }
   }
 
@@ -306,6 +441,7 @@ class UnajARApp {
   // ==========================================
 
   openDestinationPicker() {
+    this.setLoading(false); // Reseteo preventivo
     this.destPickerModal.classList.add('active');
     if (this.destSearchInput) {
       this.destSearchInput.value = '';
@@ -316,6 +452,7 @@ class UnajARApp {
 
   closeDestinationPicker() {
     this.destPickerModal.classList.remove('active');
+    this.setLoading(false);
   }
 
   renderDestinationList(query = '') {
@@ -368,13 +505,51 @@ class UnajARApp {
         <button class="btn-start-route">${isCurrentTarget ? 'En Curso' : 'Ir 🚀'}</button>
       `;
 
-      itemEl.addEventListener('click', () => {
-        this.startNavigation(poi);
+      itemEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.calculateAndStartRoute(poi);
         this.closeDestinationPicker();
       });
 
       this.destListContainer.appendChild(itemEl);
     });
+  }
+
+  /**
+   * Cálculo e Inicio Seguro de Ruta:
+   * Aplica Validación Previa, try/catch y finally con reseteo forzoso de isLoading.
+   */
+  calculateAndStartRoute(destination) {
+    // 1. VALIDACIÓN PREVIA ESTRICTA
+    if (!destination || typeof destination !== 'object' || !destination.coords) {
+      this.showToast('⚠️ Selecciona un destino válido de la lista para trazar la ruta.', 3500);
+      this.setLoading(false);
+      return false;
+    }
+
+    try {
+      this.setLoading(true, 'Trazando ruta...');
+
+      // Validar coordenadas numéricas
+      if (
+        typeof destination.coords.latitude !== 'number' ||
+        typeof destination.coords.longitude !== 'number' ||
+        isNaN(destination.coords.latitude) ||
+        isNaN(destination.coords.longitude)
+      ) {
+        throw new Error('Las coordenadas del punto de llegada no son válidas.');
+      }
+
+      this.startNavigation(destination);
+      return true;
+    } catch (error) {
+      console.error('Error al calcular o iniciar ruta:', error);
+      this.showToast(`⚠️ No se pudo iniciar la ruta: ${error.message}`, 4000);
+      return false;
+    } finally {
+      // 2. RESETEO FORZOSO EN FINALLY (Siempre devuelve isLoading = false)
+      this.setLoading(false);
+    }
   }
 
   startNavigation(poi) {
@@ -394,15 +569,16 @@ class UnajARApp {
     if (this.searchBtnLabel) this.searchBtnLabel.textContent = `Ruta: ${poi.shortName || poi.name}`;
 
     // Activar panel y ocultar guía de radar general
-    this.navHud.classList.add('active');
-    this.radarGuide.style.display = 'none';
+    if (this.navHud) this.navHud.classList.add('active');
+    if (this.radarGuide) this.radarGuide.style.display = 'none';
 
     this.showToast(`🎯 Guía iniciada hacia: ${poi.name}`, 4000);
   }
 
   cancelNavigation() {
     this.activeDestination = null;
-    this.navHud.classList.remove('active');
+    this.setLoading(false);
+    if (this.navHud) this.navHud.classList.remove('active');
     if (this.searchBtnLabel) this.searchBtnLabel.textContent = 'Buscar destino o aula...';
     if (this.navArrivalBanner) this.navArrivalBanner.classList.remove('active');
     this.showToast('Navegación finalizada.', 2500);
@@ -565,6 +741,7 @@ class UnajARApp {
     try {
       await this.sensorManager.startCamera(this.videoEl);
     } catch (camError) {
+      console.warn('Cámara física no disponible:', camError);
       this.videoEl.style.display = 'none';
       this.simulatedBgEl.style.display = 'block';
       this.showToast('⚠️ No se pudo acceder a la cámara. Usando visor virtual.', 5000);
