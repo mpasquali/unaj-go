@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0284c7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>UNAJ Go - Visor AR Campus Multi-Piso</title>
+  <title>UNAJ Go - Visor AR Campus & Navegación</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -34,12 +34,22 @@
       </div>
     </div>
 
-    <!-- 4. Filtros de Categoría Rápidos -->
-    <div id="category-bar">
-      <button class="filter-btn active" data-category="todas">Todos</button>
-      <button class="filter-btn" data-category="academica">Aulas</button>
-      <button class="filter-btn" data-category="administrativa">Trámites</button>
-      <button class="filter-btn" data-category="servicios">Servicios</button>
+    <!-- 4. Barra Superior con Buscador de Destino y Filtros -->
+    <div id="top-nav-bar">
+      <!-- Botón de Búsqueda / Selector de Destino -->
+      <button id="btn-open-destination-picker" class="destination-search-btn">
+        <span class="search-icon">🎯</span>
+        <span id="search-btn-label">Buscar destino o aula...</span>
+        <span class="search-badge">Ruta</span>
+      </button>
+
+      <!-- Filtros Rápidos de Categoría -->
+      <div id="category-bar">
+        <button class="filter-btn active" data-category="todas">Todos</button>
+        <button class="filter-btn" data-category="academica">Aulas</button>
+        <button class="filter-btn" data-category="administrativa">Trámites</button>
+        <button class="filter-btn" data-category="servicios">Servicios</button>
+      </div>
     </div>
 
     <!-- 5. SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4) -->
@@ -60,17 +70,94 @@
       <button id="btn-close-toast" class="btn-close-toast">&times;</button>
     </div>
 
-    <!-- 7. Guía Radar Direccional cuando el objetivo está fuera del campo de visión -->
+    <!-- 7. Guía Radar Direccional cuando ningún edificio está a la vista (Modo Libre) -->
     <div id="radar-guide">👈 Gira para ver los edificios</div>
 
-    <!-- 8. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
+    <!-- ======================================================== -->
+    <!-- 8. SISTEMA DE GUÍA DE RUTA GPS PASO A PASO (MODO NAVEGACIÓN) -->
+    <!-- ======================================================== -->
+    <div id="navigation-hud" class="navigation-hud">
+      <!-- Indicador AR: Flecha Direccional Dinámica Flotante -->
+      <div class="nav-compass-arrow-wrapper">
+        <div id="nav-arrow" class="nav-arrow-dial">
+          <svg class="nav-arrow-svg" viewBox="0 0 100 100">
+            <defs>
+              <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#0284c7" />
+              </linearGradient>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+            <circle cx="50" cy="50" r="44" class="nav-ring" />
+            <polygon points="50,14 68,64 50,52 32,64" fill="url(#arrowGrad)" filter="url(#glow)" />
+          </svg>
+        </div>
+        <!-- Instrucción de giro en tiempo real -->
+        <div id="nav-turn-instruction" class="nav-instruction-pill">Sigue derecho</div>
+      </div>
+
+      <!-- Panel Flotante Inferior de Ruta Activa -->
+      <div class="nav-bottom-card">
+        <div class="nav-card-left">
+          <div class="nav-destination-meta">
+            <span id="nav-dest-icon" class="nav-dest-icon">🏛️</span>
+            <div>
+              <div class="nav-title-row">
+                <h3 id="nav-dest-name" class="nav-dest-name">Edificio Mosconi</h3>
+                <span id="nav-dest-floor" class="nav-floor-badge">PB</span>
+              </div>
+              <p id="nav-dest-subtitle" class="nav-dest-sub">Rectorado & Aulas Magnas</p>
+            </div>
+          </div>
+          <div class="nav-distance-container">
+            <span id="nav-distance-val" class="nav-distance-number">--</span>
+            <span class="nav-distance-unit">m</span>
+            <span id="nav-eta-text" class="nav-eta-text">~1 min a pie</span>
+          </div>
+        </div>
+        <button id="btn-cancel-nav" class="btn-cancel-nav" title="Cancelar Navegación">✖ Salir</button>
+      </div>
+
+      <!-- Notificación de Llegada al Destino -->
+      <div id="nav-arrival-banner" class="nav-arrival-banner">
+        🎉 ¡Has llegado a tu destino!
+      </div>
+    </div>
+
+    <!-- 9. MODAL SELECTOR DE DESTINOS / BUSCADOR -->
+    <div id="destination-picker-modal" class="destination-modal">
+      <div class="destination-modal-sheet">
+        <div class="modal-sheet-header">
+          <div class="sheet-handle"></div>
+          <div class="modal-sheet-title-bar">
+            <h2>🎯 Selecciona tu Destino</h2>
+            <button id="btn-close-dest-picker" class="btn-close">&times;</button>
+          </div>
+          <!-- Barra de búsqueda rápida -->
+          <div class="search-input-wrapper">
+            <span class="search-input-icon">🔍</span>
+            <input type="text" id="dest-search-input" placeholder="Buscar por aula, edificio u oficina..." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Lista scrollable de puntos de interés -->
+        <div id="dest-list-container" class="destination-list">
+          <!-- Generado dinámicamente -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
     <div id="virtual-controls" class="virtual-controls-panel">
       <div class="controls-header">
-        <span class="controls-title">🎮 Controles Virtuales</span>
+        <span class="controls-title">🎮 Controles Virtuales (Simulación PC)</span>
         <span class="drag-hint">💡 Arrastra la pantalla para rotar en 360°</span>
       </div>
       
-      <!-- Selector de Punto de Partida y Nivel de Altura en Simulación (Pisos -1 a 4) -->
+      <!-- Controles de Ubicación, Piso y Caminata Virtual -->
       <div class="control-grid">
         <div class="control-row">
           <label for="select-start-point">Parado en:</label>
@@ -82,17 +169,25 @@
         </div>
 
         <div class="control-row">
-          <label for="select-sim-floor">Tu Piso Actual:</label>
+          <label for="select-sim-floor">Tu Piso:</label>
           <select id="select-sim-floor" class="controls-select">
-            <option value="4">Piso 4 (Altura: 39.0 m)</option>
-            <option value="3">Piso 3 (Altura: 35.5 m)</option>
-            <option value="2">Piso 2 (Altura: 32.0 m)</option>
-            <option value="1">Piso 1 (Altura: 28.5 m)</option>
-            <option value="0" selected>Planta Baja (Altura: 25.0 m)</option>
-            <option value="-1">Subsuelo (Altura: 21.5 m)</option>
-            <option value="all">Ver Todos los Pisos</option>
+            <option value="4">Piso 4 (39.0 m)</option>
+            <option value="3">Piso 3 (35.5 m)</option>
+            <option value="2">Piso 2 (32.0 m)</option>
+            <option value="1">Piso 1 (28.5 m)</option>
+            <option value="0" selected>Planta Baja (25.0 m)</option>
+            <option value="-1">Subsuelo (21.5 m)</option>
+            <option value="all">Ver Todos</option>
           </select>
         </div>
+      </div>
+
+      <!-- Botones para Caminar Virtualmente (Probar actualización de ruta) -->
+      <div class="sim-walk-row">
+        <span class="walk-label">🚶 Caminata:</span>
+        <button id="btn-walk-forward" class="btn-walk" title="Avanzar 10 metros en la dirección de la cámara">▲ Avanzar 10m</button>
+        <button id="btn-walk-backward" class="btn-walk" title="Retroceder 10 metros">▼ Retroceder 10m</button>
+        <button id="btn-walk-to-dest" class="btn-walk highlight" title="Avanzar 15 metros directo hacia el destino elegido">🎯 Acercarse al destino</button>
       </div>
 
       <!-- Slider de Brújula / Dirección 360° -->
@@ -112,7 +207,7 @@
       </div>
     </div>
 
-    <!-- 9. Modal de Detalle de Edificio / Aula (al tocar un cartel) -->
+    <!-- 11. Modal de Detalle de Edificio / Aula (al tocar un cartel) -->
     <div id="poi-detail-modal" class="detail-modal">
       <div class="detail-card">
         <button id="btn-close-detail" class="btn-close">&times;</button>
@@ -129,17 +224,21 @@
           <span id="detail-floor" class="badge-floor">Piso: Planta Baja</span>
           <span id="detail-category" class="badge-category">Académica</span>
         </div>
+        <!-- Botón para iniciar ruta desde la tarjeta -->
+        <button id="btn-start-nav-from-detail" class="btn-primary highlight" style="margin-top: 14px;">
+          🚀 Iniciar Navegación AR hacia aquí
+        </button>
       </div>
     </div>
 
-    <!-- 10. Modal de Permisos y Bienvenida -->
+    <!-- 12. Modal de Permisos y Bienvenida -->
     <div id="permission-modal">
       <div class="modal-content">
         <div class="modal-logo">📍</div>
         <h1 class="modal-title">UNAJ Go</h1>
-        <p class="modal-subtitle">Realidad Aumentada Multi-Piso</p>
+        <p class="modal-subtitle">Realidad Aumentada & Navegación</p>
         <p class="modal-description">
-          Explora los edificios, aulas y laboratorios de la <strong>Universidad Nacional Arturo Jauretche</strong> desde el subsuelo hasta el 4° piso.
+          Encuentra cualquier edificio, aula o laboratorio de la <strong>Universidad Nacional Arturo Jauretche</strong> con guía GPS paso a paso en tiempo real.
         </p>
         <div class="modal-actions">
           <button id="btn-start" class="btn-primary highlight">

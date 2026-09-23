@@ -1,5 +1,5 @@
 import { SensorManager } from './sensors.js';
-import { calculateBearing, calculateDistance, projectToScreen } from './geo-math.js';
+import { calculateBearing, calculateDistance, projectToScreen, moveCoordinate } from './geo-math.js';
 import {
   CAMPUS_LOCATIONS,
   CAMPUS_FLOORS,
@@ -25,11 +25,15 @@ class UnajARApp {
     this.isCompassWorking = false;
     this.toastTimeout = null;
 
+    // Estado de Navegación y Destino
+    this.activeDestination = null; // POI de destino seleccionado
+    this.selectedPOIForDetail = null; // POI abierto en modal de detalles
+
     // Control de arrastre con mouse/touch para PC o fallback
     this.isDragging = false;
     this.lastPointerX = 0;
 
-    // Referencias al DOM
+    // Referencias al DOM - Base
     this.videoEl = document.getElementById('camera-feed');
     this.simulatedBgEl = document.getElementById('simulated-background');
     this.markersContainer = document.getElementById('markers-container');
@@ -48,13 +52,37 @@ class UnajARApp {
     this.hudGps = document.getElementById('hud-gps');
     this.radarGuide = document.getElementById('radar-guide');
 
-    // Controles virtuales
+    // Navegación GPS / Guía de Ruta
+    this.navHud = document.getElementById('navigation-hud');
+    this.navArrow = document.getElementById('nav-arrow');
+    this.navTurnInstruction = document.getElementById('nav-turn-instruction');
+    this.navDestIcon = document.getElementById('nav-dest-icon');
+    this.navDestName = document.getElementById('nav-dest-name');
+    this.navDestFloor = document.getElementById('nav-dest-floor');
+    this.navDestSubtitle = document.getElementById('nav-dest-subtitle');
+    this.navDistanceVal = document.getElementById('nav-distance-val');
+    this.navEtaText = document.getElementById('nav-eta-text');
+    this.navArrivalBanner = document.getElementById('nav-arrival-banner');
+    this.btnCancelNav = document.getElementById('btn-cancel-nav');
+
+    // Selector de Destino Modal & Buscador
+    this.btnOpenDestPicker = document.getElementById('btn-open-destination-picker');
+    this.searchBtnLabel = document.getElementById('search-btn-label');
+    this.destPickerModal = document.getElementById('destination-picker-modal');
+    this.btnCloseDestPicker = document.getElementById('btn-close-dest-picker');
+    this.destSearchInput = document.getElementById('dest-search-input');
+    this.destListContainer = document.getElementById('dest-list-container');
+
+    // Controles virtuales PC
     this.virtualControls = document.getElementById('virtual-controls');
     this.compassSlider = document.getElementById('compass-slider');
     this.btnTurnLeft = document.getElementById('btn-turn-left');
     this.btnTurnRight = document.getElementById('btn-turn-right');
     this.selectStartPoint = document.getElementById('select-start-point');
     this.selectSimFloor = document.getElementById('select-sim-floor');
+    this.btnWalkForward = document.getElementById('btn-walk-forward');
+    this.btnWalkBackward = document.getElementById('btn-walk-backward');
+    this.btnWalkToDest = document.getElementById('btn-walk-to-dest');
 
     // Filtros de categoría y selector de piso
     this.filterButtons = document.querySelectorAll('.filter-btn');
@@ -70,6 +98,7 @@ class UnajARApp {
     this.detailDistance = document.getElementById('detail-distance');
     this.detailFloor = document.getElementById('detail-floor');
     this.detailCategory = document.getElementById('detail-category');
+    this.btnStartNavFromDetail = document.getElementById('btn-start-nav-from-detail');
 
     this.initEvents();
   }
@@ -101,7 +130,6 @@ class UnajARApp {
     this.btnStart.addEventListener('click', () => this.startApp(false));
     this.btnSimulate.addEventListener('click', () => this.startApp(true));
 
-    // Cerrar toast
     if (this.btnCloseToast) {
       this.btnCloseToast.addEventListener('click', () => this.hideToast());
     }
@@ -114,7 +142,7 @@ class UnajARApp {
       });
     });
 
-    // 3. Controles virtuales (Slider y botones de giro para PC y fallback móvil)
+    // 3. Controles virtuales (Slider y botones de giro)
     if (this.compassSlider) {
       this.compassSlider.addEventListener('input', (e) => {
         this.setHeading(parseFloat(e.target.value));
@@ -133,7 +161,39 @@ class UnajARApp {
       });
     }
 
-    // 4. Selector de piso en panel de simulación
+    // 4. Caminata Virtual en Simulación
+    if (this.btnWalkForward) {
+      this.btnWalkForward.addEventListener('click', () => this.advanceUserPosition(10, this.userHeading));
+    }
+    if (this.btnWalkBackward) {
+      this.btnWalkBackward.addEventListener('click', () => this.advanceUserPosition(-10, this.userHeading));
+    }
+    if (this.btnWalkToDest) {
+      this.btnWalkToDest.addEventListener('click', () => {
+        if (!this.activeDestination) {
+          this.showToast('Primero selecciona un destino para acercarte a él.', 3000);
+          return;
+        }
+        const bearingToDest = calculateBearing(this.userLocation, this.activeDestination.coords);
+        this.advanceUserPosition(15, bearingToDest);
+      });
+    }
+
+    // Soporte para teclado en PC (Flechas / WASD)
+    window.addEventListener('keydown', (e) => {
+      if (this.destSearchInput && document.activeElement === this.destSearchInput) return;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+        this.advanceUserPosition(5, this.userHeading);
+      } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+        this.advanceUserPosition(-5, this.userHeading);
+      } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        this.setHeading((this.userHeading - 15 + 360) % 360);
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        this.setHeading((this.userHeading + 15) % 360);
+      }
+    });
+
+    // 5. Selector de piso en panel de simulación
     if (this.selectSimFloor) {
       this.selectSimFloor.addEventListener('change', (e) => {
         const floorVal = e.target.value;
@@ -141,7 +201,7 @@ class UnajARApp {
       });
     }
 
-    // 5. Cambio de punto de partida virtual
+    // 6. Cambio de punto de partida virtual
     if (this.selectStartPoint) {
       this.selectStartPoint.addEventListener('change', (e) => {
         const pointKey = e.target.value;
@@ -150,6 +210,7 @@ class UnajARApp {
           this.userLocation = {
             latitude: selected.latitude,
             longitude: selected.longitude,
+            altitude: selected.altitude,
             accuracy: 5
           };
           this.hudGps.textContent = selected.name.split('(')[0].trim();
@@ -157,10 +218,10 @@ class UnajARApp {
       });
     }
 
-    // 6. Arrastrar con mouse o touch en pantalla para girar la vista 360°
+    // 7. Arrastrar con mouse o touch en pantalla para girar la vista 360°
     const container = document.getElementById('app-container');
     container.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button, select, input, .detail-card, .marker-card, .floor-selector, .status-toast')) return;
+      if (e.target.closest('button, select, input, .detail-card, .marker-card, .floor-selector, .status-toast, .destination-modal-sheet, .nav-bottom-card')) return;
       this.isDragging = true;
       this.lastPointerX = e.clientX;
     });
@@ -177,7 +238,7 @@ class UnajARApp {
       this.isDragging = false;
     });
 
-    // 7. Filtros de categoría
+    // 8. Filtros de categoría
     this.filterButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         this.filterButtons.forEach((b) => b.classList.remove('active'));
@@ -186,7 +247,43 @@ class UnajARApp {
       });
     });
 
-    // 8. Cerrar modal de detalles
+    // 9. Selector de Destino Modal & Búsqueda
+    if (this.btnOpenDestPicker) {
+      this.btnOpenDestPicker.addEventListener('click', () => {
+        this.openDestinationPicker();
+      });
+    }
+
+    if (this.btnCloseDestPicker) {
+      this.btnCloseDestPicker.addEventListener('click', () => {
+        this.closeDestinationPicker();
+      });
+    }
+
+    if (this.destSearchInput) {
+      this.destSearchInput.addEventListener('input', (e) => {
+        this.renderDestinationList(e.target.value);
+      });
+    }
+
+    // 10. Cancelar Navegación Activa
+    if (this.btnCancelNav) {
+      this.btnCancelNav.addEventListener('click', () => {
+        this.cancelNavigation();
+      });
+    }
+
+    // 11. Iniciar ruta desde tarjeta de detalle
+    if (this.btnStartNavFromDetail) {
+      this.btnStartNavFromDetail.addEventListener('click', () => {
+        if (this.selectedPOIForDetail) {
+          this.startNavigation(this.selectedPOIForDetail);
+          this.detailModal.classList.remove('active');
+        }
+      });
+    }
+
+    // 12. Cerrar modal de detalles
     if (this.btnCloseDetail) {
       this.btnCloseDetail.addEventListener('click', () => {
         this.detailModal.classList.remove('active');
@@ -194,28 +291,203 @@ class UnajARApp {
     }
   }
 
+  /**
+   * Desplaza virtualmente al usuario (para pruebas en PC)
+   */
+  advanceUserPosition(meters, bearingDegrees) {
+    if (!this.userLocation) return;
+    this.userLocation = moveCoordinate(this.userLocation, meters, bearingDegrees);
+    this.hudGps.textContent = `Paseo Virtual (GPS Simulado)`;
+    this.showToast(`🚶 Avanzaste ${Math.abs(meters)}m`, 1500);
+  }
+
+  // ==========================================
+  // LÓGICA DE NAVEGACIÓN Y GUÍA DE RUTA GPS
+  // ==========================================
+
+  openDestinationPicker() {
+    this.destPickerModal.classList.add('active');
+    if (this.destSearchInput) {
+      this.destSearchInput.value = '';
+      setTimeout(() => this.destSearchInput.focus(), 150);
+    }
+    this.renderDestinationList('');
+  }
+
+  closeDestinationPicker() {
+    this.destPickerModal.classList.remove('active');
+  }
+
+  renderDestinationList(query = '') {
+    if (!this.destListContainer) return;
+    const cleanQuery = query.toLowerCase().trim();
+
+    const filtered = CAMPUS_LOCATIONS.filter((loc) => {
+      if (!cleanQuery) return true;
+      return (
+        loc.name.toLowerCase().includes(cleanQuery) ||
+        loc.subtitle.toLowerCase().includes(cleanQuery) ||
+        loc.description.toLowerCase().includes(cleanQuery) ||
+        getFloorLabel(loc.floor).toLowerCase().includes(cleanQuery)
+      );
+    });
+
+    this.destListContainer.innerHTML = '';
+
+    if (filtered.length === 0) {
+      this.destListContainer.innerHTML = `
+        <div class="dest-empty-state">
+          <p>No se encontraron aulas o edificios con "<strong>${query}</strong>"</p>
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach((poi) => {
+      const distance = this.userLocation
+        ? Math.round(calculateDistance(this.userLocation, poi.coords))
+        : null;
+
+      const floorCode = getFloorCode(poi.floor);
+      const isCurrentTarget = this.activeDestination && this.activeDestination.id === poi.id;
+
+      const itemEl = document.createElement('div');
+      itemEl.className = `dest-item-card ${isCurrentTarget ? 'is-active-target' : ''}`;
+      itemEl.innerHTML = `
+        <div class="dest-item-icon" style="background-color: ${poi.color}">
+          <span>${poi.icon || '📍'}</span>
+        </div>
+        <div class="dest-item-info">
+          <div class="dest-item-header">
+            <h4 class="dest-item-title">${poi.name}</h4>
+            <span class="dest-item-floor">${floorCode}</span>
+          </div>
+          <p class="dest-item-sub">${poi.subtitle}</p>
+          ${distance !== null ? `<span class="dest-item-dist">📍 a ${distance} metros</span>` : ''}
+        </div>
+        <button class="btn-start-route">${isCurrentTarget ? 'En Curso' : 'Ir 🚀'}</button>
+      `;
+
+      itemEl.addEventListener('click', () => {
+        this.startNavigation(poi);
+        this.closeDestinationPicker();
+      });
+
+      this.destListContainer.appendChild(itemEl);
+    });
+  }
+
+  startNavigation(poi) {
+    this.activeDestination = poi;
+
+    // Cambiar automáticamente al piso del destino si está filtrado en otro piso
+    if (this.activeFloor !== 'all' && this.activeFloor !== poi.floor) {
+      this.setFloor(poi.floor);
+      this.showToast(`Cambiando a nivel ${getFloorLabel(poi.floor)}`, 3000);
+    }
+
+    // Actualizar UI del panel inferior de navegación
+    if (this.navDestIcon) this.navDestIcon.textContent = poi.icon || '🏛️';
+    if (this.navDestName) this.navDestName.textContent = poi.name;
+    if (this.navDestFloor) this.navDestFloor.textContent = getFloorCode(poi.floor);
+    if (this.navDestSubtitle) this.navDestSubtitle.textContent = poi.subtitle;
+    if (this.searchBtnLabel) this.searchBtnLabel.textContent = `Ruta: ${poi.shortName || poi.name}`;
+
+    // Activar panel y ocultar guía de radar general
+    this.navHud.classList.add('active');
+    this.radarGuide.style.display = 'none';
+
+    this.showToast(`🎯 Guía iniciada hacia: ${poi.name}`, 4000);
+  }
+
+  cancelNavigation() {
+    this.activeDestination = null;
+    this.navHud.classList.remove('active');
+    if (this.searchBtnLabel) this.searchBtnLabel.textContent = 'Buscar destino o aula...';
+    if (this.navArrivalBanner) this.navArrivalBanner.classList.remove('active');
+    this.showToast('Navegación finalizada.', 2500);
+  }
+
+  updateNavigationHUD() {
+    if (!this.activeDestination || !this.userLocation) {
+      return;
+    }
+
+    const distance = calculateDistance(this.userLocation, this.activeDestination.coords);
+    const targetBearing = calculateBearing(this.userLocation, this.activeDestination.coords);
+    const deltaAngle = (targetBearing - this.userHeading + 540) % 360 - 180;
+
+    // Actualizar indicador numérico de distancia
+    if (this.navDistanceVal) {
+      this.navDistanceVal.textContent = Math.round(distance);
+    }
+
+    // Tiempo estimado a pie (~1.2 metros por segundo)
+    if (this.navEtaText) {
+      const minutes = Math.max(1, Math.round(distance / 70));
+      this.navEtaText.textContent = distance <= 12 ? '¡Llegando!' : `~${minutes} min a pie`;
+    }
+
+    // Rotar flecha AR dinámica hacia el objetivo
+    if (this.navArrow) {
+      this.navArrow.style.transform = `rotate(${deltaAngle}deg)`;
+    }
+
+    // Instrucción de giro en tiempo real
+    if (this.navTurnInstruction) {
+      if (distance <= 12) {
+        this.navTurnInstruction.textContent = '🎯 ¡Frente a ti!';
+        this.navTurnInstruction.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
+      } else if (Math.abs(deltaAngle) <= 18) {
+        this.navTurnInstruction.textContent = '⬆️ Sigue derecho';
+        this.navTurnInstruction.style.backgroundColor = 'rgba(16, 185, 129, 0.9)'; // Verde
+      } else if (deltaAngle > 18 && deltaAngle <= 90) {
+        this.navTurnInstruction.textContent = `➡️ Gira a la derecha (${Math.round(deltaAngle)}°)`;
+        this.navTurnInstruction.style.backgroundColor = 'rgba(2, 132, 199, 0.9)'; // Cyan
+      } else if (deltaAngle > 90) {
+        this.navTurnInstruction.textContent = `🔄 Gira hacia atrás (derecha)`;
+        this.navTurnInstruction.style.backgroundColor = 'rgba(245, 158, 11, 0.9)'; // Ámbar
+      } else if (deltaAngle < -18 && deltaAngle >= -90) {
+        this.navTurnInstruction.textContent = `⬅️ Gira a la izquierda (${Math.round(Math.abs(deltaAngle))}°)`;
+        this.navTurnInstruction.style.backgroundColor = 'rgba(2, 132, 199, 0.9)';
+      } else {
+        this.navTurnInstruction.textContent = `🔄 Gira hacia atrás (izquierda)`;
+        this.navTurnInstruction.style.backgroundColor = 'rgba(245, 158, 11, 0.9)';
+      }
+    }
+
+    // Notificación visual de llegada al destino
+    if (this.navArrivalBanner) {
+      if (distance <= 10) {
+        this.navArrivalBanner.classList.add('active');
+      } else {
+        this.navArrivalBanner.classList.remove('active');
+      }
+    }
+  }
+
+  // ==========================================
+  // CONFIGURACIÓN DE PISOS Y ORIENTACIÓN
+  // ==========================================
+
   setFloor(newFloor) {
     this.activeFloor = newFloor;
 
-    // Calcular altura estimada del observador según piso
     if (this.activeFloor === 'all') {
-      this.userAltitude = 25.0; // Altura estándar de nivel del suelo
+      this.userAltitude = 25.0;
     } else {
       this.userAltitude = getFloorAltitude(this.activeFloor);
     }
 
-    // Actualizar botones del elevador lateral
     this.floorButtons.forEach((btn) => {
       const btnFloor = btn.dataset.floor === 'all' ? 'all' : parseInt(btn.dataset.floor, 10);
       btn.classList.toggle('active', btnFloor === this.activeFloor);
     });
 
-    // Sincronizar select en panel de simulación si existe
     if (this.selectSimFloor) {
       this.selectSimFloor.value = this.activeFloor.toString();
     }
 
-    // Actualizar indicador en HUD
     if (this.hudFloor) {
       if (this.activeFloor === 'all') {
         this.hudFloor.textContent = 'TODOS';
@@ -250,7 +522,6 @@ class UnajARApp {
     this.btnSimulate.disabled = true;
 
     if (this.simulationMode) {
-      // MODO SIMULACIÓN EXPLICITA
       this.permissionModal.style.display = 'none';
       const startPoint = SIMULATION_START_POINTS.plaza_central;
       this.userLocation = {
@@ -261,11 +532,10 @@ class UnajARApp {
       };
 
       this.setHeading(0);
-      this.setFloor(0); // Planta Baja por defecto
+      this.setFloor(0);
       this.hudGps.textContent = 'Plaza Central UNAJ';
       this.virtualControls.classList.add('visible');
 
-      // Intentar levantar cámara o fondo virtual
       try {
         await this.sensorManager.startCamera(this.videoEl);
       } catch (camError) {
@@ -277,21 +547,12 @@ class UnajARApp {
       return;
     }
 
-    // ==========================================
-    // MODO REAL EN CELULAR
-    // ==========================================
+    // Modo Celular
     this.btnStart.textContent = 'Solicitando acceso...';
-
-    // PASO 1 (CRUCIAL PARA iOS): Solicitar permiso de orientación INMEDIATAMENTE
-    // en el evento de clic del usuario, antes de cualquier otra llamada asíncrona.
     const orientationPerm = await SensorManager.requestDeviceOrientationPermission();
-    console.log('Permiso de orientación recibido:', orientationPerm);
 
-    // Ocultar modal de bienvenida
     this.permissionModal.style.display = 'none';
 
-    // ASIGNAR UBICACIÓN BASE INMEDIATA:
-    // Evita que la app se quede bloqueada en blanco esperando al GPS
     this.userLocation = {
       latitude: SIMULATION_START_POINTS.plaza_central.latitude,
       longitude: SIMULATION_START_POINTS.plaza_central.longitude,
@@ -301,17 +562,14 @@ class UnajARApp {
     };
     this.hudGps.textContent = 'GPS: Buscando señal...';
 
-    // PASO 2: Iniciar cámara trasera
     try {
       await this.sensorManager.startCamera(this.videoEl);
     } catch (camError) {
-      console.warn('Cámara física no disponible:', camError);
       this.videoEl.style.display = 'none';
       this.simulatedBgEl.style.display = 'block';
       this.showToast('⚠️ No se pudo acceder a la cámara. Usando visor virtual.', 5000);
     }
 
-    // PASO 3: Iniciar listener de Brújula con manejo de eventos y timeout de fallo
     if (!orientationPerm.granted) {
       this.isCompassWorking = false;
       this.showToast('⚠️ Permiso de sensores denegado o no disponible. Controles en pantalla activados.', 6000);
@@ -333,7 +591,6 @@ class UnajARApp {
       );
     }
 
-    // PASO 4: Iniciar GPS con actualización fluida y manejo de error
     this.sensorManager.startGeolocation(
       (location) => {
         this.userLocation = {
@@ -352,12 +609,12 @@ class UnajARApp {
       }
     );
 
-    // Iniciar bucle de renderizado continuo a 60 FPS
     this.renderLoop();
   }
 
   renderLoop() {
     this.updateMarkers();
+    this.updateNavigationHUD();
     requestAnimationFrame(() => this.renderLoop());
   }
 
@@ -367,7 +624,6 @@ class UnajARApp {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
 
-    // Obtener POIs filtrados dinámicamente por CATEGORÍA y PISO (-1 a 4 o 'all')
     const locations = getLocationsByFilter(this.activeCategory, this.activeFloor);
 
     this.markersContainer.innerHTML = '';
@@ -384,7 +640,6 @@ class UnajARApp {
         closestBuilding = building;
       }
 
-      // Cálculo de elevación vertical según altura relativa del piso
       const targetAltitude = building.coords.altitude || getFloorAltitude(building.floor);
       const currentAltitude = this.userAltitude || 25.0;
       const verticalAltitudeDiff = targetAltitude - currentAltitude;
@@ -395,42 +650,46 @@ class UnajARApp {
         distance,
         screenWidth,
         screenHeight,
-        65, // FOV horizontal
-        verticalAltitudeDiff // Desplazamiento vertical tridimensional preciso
+        65,
+        verticalAltitudeDiff
       );
 
       if (projection.isVisible) {
         anyVisible = true;
-        this.renderMarkerElement(building, distance, projection.x, projection.y);
+        const isNavTarget = this.activeDestination && this.activeDestination.id === building.id;
+        this.renderMarkerElement(building, distance, projection.x, projection.y, isNavTarget);
       }
     });
 
-    // Actualizar guía de radar direccional
-    if (!anyVisible && closestBuilding) {
-      const bearing = calculateBearing(this.userLocation, closestBuilding.coords);
-      const deltaAngle = (bearing - this.userHeading + 540) % 360 - 180;
-      const arrow = deltaAngle > 0 ? '👉 Gira a la derecha' : '👈 Gira a la izquierda';
-      this.radarGuide.textContent = `${arrow} para ver ${closestBuilding.name}`;
-      this.radarGuide.style.display = 'block';
+    // Solo mostrar radar guide si no hay navegación activa
+    if (!this.activeDestination) {
+      if (!anyVisible && closestBuilding) {
+        const bearing = calculateBearing(this.userLocation, closestBuilding.coords);
+        const deltaAngle = (bearing - this.userHeading + 540) % 360 - 180;
+        const arrow = deltaAngle > 0 ? '👉 Gira a la derecha' : '👈 Gira a la izquierda';
+        this.radarGuide.textContent = `${arrow} para ver ${closestBuilding.name}`;
+        this.radarGuide.style.display = 'block';
+      } else {
+        this.radarGuide.style.display = 'none';
+      }
     } else {
       this.radarGuide.style.display = 'none';
     }
   }
 
-  renderMarkerElement(building, distance, x, y) {
+  renderMarkerElement(building, distance, x, y, isNavTarget = false) {
     const marker = document.createElement('div');
-    marker.className = 'ar-marker';
+    marker.className = `ar-marker ${isNavTarget ? 'is-nav-target' : ''}`;
     marker.style.left = `${x}px`;
     marker.style.top = `${y}px`;
 
-    // Escala del cartel según distancia (más cercano = mayor tamaño)
     const scale = Math.max(0.7, Math.min(1.15, 1.25 - distance / 400));
     marker.style.transform = `translate(-50%, -100%) scale(${scale})`;
 
     const floorCode = getFloorCode(building.floor);
 
     marker.innerHTML = `
-      <div class="marker-card" style="border-top-color: ${building.color}">
+      <div class="marker-card ${isNavTarget ? 'highlight-target' : ''}" style="border-top-color: ${building.color}">
         <div class="marker-badge" style="background-color: ${building.color}">
           <span class="marker-icon">${building.icon || '📍'}</span>
         </div>
@@ -446,7 +705,6 @@ class UnajARApp {
       <div class="marker-arrow" style="border-top-color: ${building.color}"></div>
     `;
 
-    // Abrir tarjeta de detalle al hacer click
     marker.addEventListener('click', (e) => {
       e.stopPropagation();
       this.showBuildingDetails(building, distance);
@@ -456,6 +714,7 @@ class UnajARApp {
   }
 
   showBuildingDetails(building, distance) {
+    this.selectedPOIForDetail = building;
     this.detailTitle.textContent = building.name;
     this.detailSubtitle.textContent = building.subtitle;
     this.detailDescription.textContent = building.description;

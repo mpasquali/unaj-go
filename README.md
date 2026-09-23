@@ -1,55 +1,58 @@
-# UNAJ Go - Visor WebAR Campus Multi-Piso 📍
+# UNAJ Go - Visor WebAR Campus & Navegación GPS Paso a Paso 📍
 
 Aplicación web móvil de Realidad Aumentada (WebAR) georreferenciada para la **Universidad Nacional Arturo Jauretche (UNAJ)**, Sede Central Florencio Varela.
 
-Permite apuntar con la cámara del celular o probar en la computadora (con controles virtuales) para visualizar carteles flotantes interactivos en tiempo real con la distancia, dirección y **nivel/piso** exacto de aulas, oficinas y laboratorios.
+Permite apuntar con la cámara del celular o probar en la computadora con controles virtuales para visualizar carteles flotantes interactivos en tiempo real con la distancia, dirección y **nivel/piso** exacto de aulas, oficinas y laboratorios, junto con un **sistema de navegación y guía de ruta en tiempo real**.
 
 ---
 
-## 🛗 Navegación Multi-Piso (Rango Completo: Subsuelo a Piso 4)
+## 🚀 Sistema de Navegación GPS Paso a Paso
 
-El sistema soporta filtrado vertical para todos los niveles del campus:
+Al seleccionar un destino específico:
 
-* **Piso 4 (`floor: 4` | Altura: 39.0 m)**:
-  * *Aulas de Posgrado & Doctorado*: Especialización y defensas de maestría.
-  * *Centro de Cómputos & Datacenter*: Infraestructura de telecomunicaciones y servidores.
-* **Piso 3 (`floor: 3` | Altura: 35.5 m)**:
-  * *Gabinetes de Investigación y Becarios*: Boxes de investigación CONICET y UNAJ.
-  * *Sala de Seminarios & Videoconferencias*: Teleconferencias y simposios.
-* **Piso 2 (`floor: 2` | Altura: 32.0 m)**:
-  * *Dirección de Institutos UNAJ*: Ingeniería, Sociales, Iniciales.
-  * *Laboratorio de Idiomas & Multimedia*.
-* **Piso 1 (`floor: 1` | Altura: 28.5 m)**:
-  * *Aulas Mosconi 11 a 20*.
-  * *Laboratorio de Redes e Informática* (Pabellón YPF).
-  * *Aulas Origone 113 a 124*.
-  * *Biblioteca: Sala de Lectura Silenciosa*.
-* **Planta Baja (`floor: 0` | Altura: 25.0 m)**:
-  * *Edificio Mosconi (Central)*: Rectorado, Mesa de Entradas y Aulas Magnas.
-  * *Departamento de Alumnos*: Constancias, inscripciones y títulos.
-  * *Laboratorios YPF (PB)*: Química, bioingeniería y talleres.
-  * *Aulas Origone 101 a 112*.
-  * *Biblioteca Central (PB)*: Préstamos y sala parlante.
-  * *Comedor Universitario & Buffet*.
-  * *Auditorio UNAJ*.
-  * *Acceso Principal Calchaquí*.
-* **Subsuelo (`floor: -1` | Altura: 21.5 m)**:
-  * *Archivo General & Depósito Histórico*.
-  * *Laboratorio de Ensayos Geológicos y Mecánica de Rocas*.
-* **Todos los Pisos (`floor: 'all'`)**:
-  * Visualización simultánea de todos los niveles con perspectiva de altura relativa en pantalla.
+1. **Selector de Destino**:
+   * **Buscador Superior**: Pulsa `🎯 Buscar destino o aula...` para abrir el buscador interactivo con filtrado en tiempo real por nombre, oficina, aula o piso.
+   * **Desde cualquier cartel**: Toca cualquier cartel flotante del campus y pulsa `🚀 Iniciar Navegación AR hacia aquí`.
+
+2. **Cálculo Trigonométrico de Ruta en Tiempo Real**:
+   * Calcula la **distancia lineal** (fórmula de Haversine) entre la posición GPS actual del usuario y el destino.
+   * Calcula el **rumbo (bearing)** necesario para orientar al estudiante.
+   * Modula el ángulo relativo ($\Delta\theta$) respecto al frente del teléfono.
+
+3. **Guía Visual en la Cámara (AR)**:
+   * **Flecha Direccional Dinámica**: Superpuesta en la vista de la cámara, rota en 360° en tiempo real señalando hacia dónde debe girar el usuario:
+     * 🟢 *Verde*: Alineado (`⬆️ Sigue derecho`).
+     * 🔵 *Azul*: Giro necesario (`➡️ Gira a la derecha` o `⬅️ Gira a la izquierda`).
+     * 🟠 *Ámbar*: Objetivo a espaldas (`🔄 Gira hacia atrás`).
+   * **Panel Flotante Inferior**:
+     * Nombre e icono del destino con su badge de piso (`PB`, `1°P`, `4°P`, etc.).
+     * Contador de distancia en tiempo real en metros (`45 m`).
+     * Tiempo estimado a pie (`~1 min a pie`).
+     * Botón `✖ Salir` para cancelar la ruta en cualquier momento.
+   * **Cartel Objetivo Resaltado**: El cartel del destino seleccionado emite un halo pulsante de alta visibilidad para distinguirlo del resto de los edificios.
+   * **Notificación de Llegada**: Al llegar a menos de 10 metros, se despliega el banner: `🎉 ¡Has llegado a tu destino!`.
+
+4. **Modo Simulación y Caminata Virtual (PC)**:
+   * **Botones de Caminata**:
+     * `▲ Avanzar 10m`: Desplaza tu posición virtual hacia donde apunta la cámara.
+     * `▼ Retroceder 10m`: Retrocede en la dirección opuesta.
+     * `🎯 Acercarse al destino`: Avanza 15m directamente hacia el edificio seleccionado.
+   * **Atajos de Teclado**:
+     * `↑` o `W`: Caminar hacia adelante.
+     * `↓` o `S`: Caminar hacia atrás.
+     * `←` o `A`: Rotar cámara a la izquierda.
+     * `→` o `D`: Rotar cámara a la derecha.
 
 ---
 
-## 🎮 Controles en la Interfaz
+## 🛗 Niveles y Pisos Soportados (-1 a 4)
 
-1. **Elevador de Pisos Lateral**:
-   * Selector vertical compacto en el margen derecho: **`4°P`**, **`3°P`**, **`2°P`**, **`1°P`**, **`PB`**, **`SS`** y **`ALL`**.
-   * Filtra instantáneamente los carteles y la guía de radar.
-2. **Selector de Piso en Simulación (PC)**:
-   * En el panel de control inferior puedes cambiar **"Tu Piso Actual"** para simular la vista del observador en cada nivel (de Subsuelo a Piso 4), ajustando automáticamente la altura visual.
-3. **Perspectiva Tridimensional en AR**:
-   * Los puntos de pisos más altos se proyectan a mayor altura en el visor angular, y los pisos inferiores por debajo del horizonte.
+* **Piso 4 (`floor: 4`)**: Aulas de Posgrado, Centro de Cómputos & Datacenter.
+* **Piso 3 (`floor: 3`)**: Gabinetes de Investigación CONICET/UNAJ, Sala de Seminarios.
+* **Piso 2 (`floor: 2`)**: Dirección de Institutos UNAJ, Laboratorio de Idiomas.
+* **Piso 1 (`floor: 1`)**: Aulas Mosconi 11 a 20, Lab. Redes YPF, Aulas Origone 113 a 124, Biblioteca Sala Silenciosa.
+* **Planta Baja (`floor: 0`)**: Rectorado, Alumnos, Lab. YPF, Aulas Origone 101 a 112, Buffet, Biblioteca, Auditorio, Acceso Calchaquí.
+* **Subsuelo (`floor: -1`)**: Archivo General, Laboratorio de Ensayos Geológicos.
 
 ---
 

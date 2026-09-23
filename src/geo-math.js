@@ -43,16 +43,35 @@ export function calculateBearing(userCoord, targetCoord) {
 }
 
 /**
+ * Desplaza una coordenada geográfica una distancia dada en metros siguiendo un rumbo (en grados).
+ * Utilizado para la simulación de caminata virtual en PC.
+ */
+export function moveCoordinate(coord, distanceMeters, bearingDegrees) {
+  const distRatio = distanceMeters / EARTH_RADIUS_METERS;
+  const bearingRad = toRad(bearingDegrees);
+  const lat1 = toRad(coord.latitude);
+  const lon1 = toRad(coord.longitude);
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(distRatio) +
+    Math.cos(lat1) * Math.sin(distRatio) * Math.cos(bearingRad)
+  );
+
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(bearingRad) * Math.sin(distRatio) * Math.cos(lat1),
+    Math.cos(distRatio) - Math.sin(lat1) * Math.sin(lat2)
+  );
+
+  return {
+    latitude: toDeg(lat2),
+    longitude: toDeg(lon2),
+    altitude: coord.altitude || 25.0
+  };
+}
+
+/**
  * Proyecta las coordenadas geográficas a píxeles (X, Y) en la pantalla,
  * considerando la altura relativa de pisos para una experiencia AR tridimensional precisa.
- * 
- * @param {number} targetBearing - Azimut hacia el edificio (0°-360°)
- * @param {number} userHeading - Hacia dónde apunta el celular (0°-360°)
- * @param {number} distance - Distancia en metros al edificio
- * @param {number} screenWidth - Ancho del viewport en px
- * @param {number} screenHeight - Alto del viewport en px
- * @param {number} hfov - Campo de visión horizontal de la cámara (~60°)
- * @param {number} verticalAltitudeDiff - Diferencia de altura en metros (targetAlt - userAlt)
  */
 export function projectToScreen(
   targetBearing,
@@ -82,7 +101,6 @@ export function projectToScreen(
   const x = screenWidth / 2 + normalizedX * (screenWidth / 2);
 
   // Proyección vertical con elevación por pisos
-  // VFOV aproximado proporcional al aspect ratio de pantalla
   const vfov = (hfov * screenHeight) / screenWidth;
   const elevationAngleRad = Math.atan2(verticalAltitudeDiff, Math.max(distance, 4));
   const elevationAngleDeg = toDeg(elevationAngleRad);
