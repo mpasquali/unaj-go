@@ -30,7 +30,8 @@ class UnajARApp {
     this.loadingSafetyTimeout = null;
 
     // Estado de Navegación y Destino
-    this.activeDestination = null; // POI de destino seleccionado
+    this._selectedDestination = null; // POI de destino seleccionado
+    this.activeDestination = null; // POI de destino activo
     this.selectedPOIForDetail = null; // POI abierto en modal de detalles
 
     // Control de arrastre con mouse/touch para PC o fallback
@@ -108,6 +109,15 @@ class UnajARApp {
     this.initEvents();
   }
 
+  get selectedDestination() {
+    return this._selectedDestination || this.activeDestination || null;
+  }
+
+  set selectedDestination(val) {
+    this._selectedDestination = val || null;
+    this.activeDestination = val || null;
+  }
+
   /**
    * Gestión Segura del Estado Cargando:
    * Incluye timeout de seguridad forzoso para asegurar que NUNCA se congele la interfaz.
@@ -126,7 +136,7 @@ class UnajARApp {
         this.searchBtnBadge.textContent = '⏳';
         this.searchBtnBadge.classList.add('loading');
       }
-      if (this.searchBtnLabel && !this.activeDestination) {
+      if (this.searchBtnLabel && !this.selectedDestination) {
         this.searchBtnLabel.textContent = message;
       }
 
@@ -143,8 +153,8 @@ class UnajARApp {
         this.searchBtnBadge.classList.remove('loading');
       }
       if (this.searchBtnLabel) {
-        this.searchBtnLabel.textContent = this.activeDestination
-          ? `Ruta: ${this.activeDestination.shortName || this.activeDestination.name}`
+        this.searchBtnLabel.textContent = this.selectedDestination
+          ? `Ruta: ${this.selectedDestination.shortName || this.selectedDestination.name}`
           : 'Buscar destino o aula...';
       }
     }
@@ -218,12 +228,17 @@ class UnajARApp {
     }
     if (this.btnWalkToDest) {
       this.btnWalkToDest.addEventListener('click', () => {
-        if (!this.activeDestination) {
+        if (!this.selectedDestination) {
           this.showToast('⚠️ Primero selecciona un destino para acercarte a él.', 3000);
           return;
         }
-        const bearingToDest = calculateBearing(this.userLocation, this.activeDestination.coords);
-        this.advanceUserPosition(15, bearingToDest);
+        try {
+          const bearingToDest = calculateBearing(this.userLocation, this.selectedDestination.coords);
+          this.advanceUserPosition(15, bearingToDest);
+        } catch (err) {
+          console.error('Error al avanzar hacia el destino:', err);
+          this.showToast('⚠️ Error al calcular la dirección hacia el destino.', 3000);
+        }
       });
     }
 
@@ -304,12 +319,13 @@ class UnajARApp {
         // Si el usuario hace clic específicamente en la insignia "Ruta"
         if (isBadgeClick) {
           e.stopPropagation();
-          if (!this.activeDestination) {
-            this.showToast('⚠️ Selecciona primero un destino de la lista para iniciar la ruta.', 3500);
+          // Validación Temprana obligatoria
+          if (!this.selectedDestination) {
+            this.showToast('⚠️ No hay ningún destino seleccionado para iniciar la ruta.', 3500);
             this.openDestinationPicker();
-          } else {
-            this.showToast(`Ruta activa hacia: ${this.activeDestination.name}`, 3000);
+            return; // Corta la ejecución inmediatamente sin tocar estados de carga
           }
+          this.searchRoute(this.selectedDestination);
           return;
         }
 
@@ -390,10 +406,9 @@ class UnajARApp {
   handleSearchEnterSubmit() {
     const query = this.destSearchInput ? this.destSearchInput.value.trim().toLowerCase() : '';
 
-    // Validación Previa: Input vacío
+    // Validación Previa: Input vacío (corta inmediatamente sin alterar estados)
     if (!query) {
       this.showToast('⚠️ Escribe el nombre de un aula o edificio para buscar.', 3000);
-      this.setLoading(false);
       return;
     }
 
@@ -516,15 +531,47 @@ class UnajARApp {
   }
 
   /**
+   * Búsqueda y trazado de ruta con Validación Temprana y Try/Catch/Finally.
+   * Manejo seguro que garantiza isLoading = false sin importar el resultado.
+   */
+  async searchRoute(destination = null) {
+    const target = destination || this.selectedDestination;
+
+    // 1. VALIDACIÓN TEMPRANA OBLIGATORIA (Guard Clause)
+    // Si no hay un destino seleccionado (if (!selectedDestination)), cortar inmediatamente
+    // con un toast y sin alterar ningún estado de carga de la interfaz.
+    if (!target || !target.coords) {
+      this.showToast('⚠️ No hay un destino seleccionado. Selecciona un aula o edificio primero.', 3500);
+      this.openDestinationPicker();
+      return false; // Corta la ejecución inmediatamente sin tocar isLoading ni bloquear UI
+    }
+
+    try {
+      this.setLoading(true, 'Buscando ruta...');
+      return this.calculateAndStartRoute(target);
+    } catch (err) {
+      console.error('Error en searchRoute:', err);
+      this.showToast(`⚠️ Error al calcular la ruta: ${err.message}`, 4000);
+      return false;
+    } finally {
+      // Garantizar que la bandera de carga SIEMPRE vuelva a false
+      this.setLoading(false);
+    }
+  }
+
+  /**
    * Cálculo e Inicio Seguro de Ruta:
    * Aplica Validación Previa, try/catch y finally con reseteo forzoso de isLoading.
    */
-  calculateAndStartRoute(destination) {
-    // 1. VALIDACIÓN PREVIA ESTRICTA
-    if (!destination || typeof destination !== 'object' || !destination.coords) {
-      this.showToast('⚠️ Selecciona un destino válido de la lista para trazar la ruta.', 3500);
-      this.setLoading(false);
-      return false;
+  calculateAndStartRoute(destination = null) {
+    const target = destination || this.selectedDestination;
+
+    // 1. VALIDACIÓN TEMPRANA OBLIGATORIA (Guard Clause)
+    // Si no hay un destino válido, mostrar toast y cortar INMEDIATAMENTE (return)
+    // sin alterar los estados de la interfaz ni activar isLoading = true.
+    if (!target || typeof target !== 'object' || !target.coords) {
+      this.showToast('⚠️ Debes seleccionar un destino válido de la lista para trazar la ruta.', 3500);
+      return false; // Retorno inmediato sin tocar isLoading
     }
 
     try {
@@ -532,15 +579,15 @@ class UnajARApp {
 
       // Validar coordenadas numéricas
       if (
-        typeof destination.coords.latitude !== 'number' ||
-        typeof destination.coords.longitude !== 'number' ||
-        isNaN(destination.coords.latitude) ||
-        isNaN(destination.coords.longitude)
+        typeof target.coords.latitude !== 'number' ||
+        typeof target.coords.longitude !== 'number' ||
+        isNaN(target.coords.latitude) ||
+        isNaN(target.coords.longitude)
       ) {
         throw new Error('Las coordenadas del punto de llegada no son válidas.');
       }
 
-      this.startNavigation(destination);
+      this.startNavigation(target);
       return true;
     } catch (error) {
       console.error('Error al calcular o iniciar ruta:', error);
@@ -553,6 +600,7 @@ class UnajARApp {
   }
 
   startNavigation(poi) {
+    this.selectedDestination = poi;
     this.activeDestination = poi;
 
     // Cambiar automáticamente al piso del destino si está filtrado en otro piso
@@ -576,6 +624,7 @@ class UnajARApp {
   }
 
   cancelNavigation() {
+    this.selectedDestination = null;
     this.activeDestination = null;
     this.setLoading(false);
     if (this.navHud) this.navHud.classList.remove('active');
@@ -907,5 +956,7 @@ class UnajARApp {
 
 // Inicializar al cargar el DOM
 window.addEventListener('DOMContentLoaded', () => {
-  new UnajARApp();
+  window.app = new UnajARApp();
 });
+
+export { UnajARApp };

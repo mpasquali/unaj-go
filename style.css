@@ -472,7 +472,7 @@ body, html {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
   transition: background-color 0.25s ease;
-  pointer-events: auto;
+  pointer-events: none !important;
 }
 
 /* Tarjeta Inferior de Ruta Activa */
@@ -609,7 +609,7 @@ body, html {
   font-size: 14px;
   font-weight: 800;
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
-  pointer-events: auto !important;
+  pointer-events: none !important;
   animation: bounce 1.2s infinite;
 }
 
@@ -877,7 +877,7 @@ body, html {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  display: flex;
+  display: none !important;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -889,6 +889,7 @@ body, html {
 }
 
 .status-toast.active {
+  display: flex !important;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto !important;
@@ -924,7 +925,7 @@ body, html {
   display: none;
   white-space: nowrap;
   animation: bounce 1.8s infinite;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 @keyframes bounce {
