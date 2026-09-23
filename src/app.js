@@ -22,8 +22,10 @@ class UnajARApp {
     this.activeCategory = 'todas';
     this.activeFloor = 0; // Planta Baja por defecto (0), o 'all', 1, 2, 3, 4, -1
     this.userAltitude = 25.0; // Altura base sobre nivel del mar en metros (PB)
+    this.isCompassWorking = false;
+    this.toastTimeout = null;
 
-    // Control de arrastre con mouse/touch para PC
+    // Control de arrastre con mouse/touch para PC o fallback
     this.isDragging = false;
     this.lastPointerX = 0;
 
@@ -35,13 +37,18 @@ class UnajARApp {
     this.btnStart = document.getElementById('btn-start');
     this.btnSimulate = document.getElementById('btn-simulate');
 
+    // Notificaciones / Toast
+    this.toastEl = document.getElementById('status-toast');
+    this.toastMessageEl = document.getElementById('toast-message');
+    this.btnCloseToast = document.getElementById('btn-close-toast');
+
     // HUD y Telemetría
     this.hudHeading = document.getElementById('hud-heading');
     this.hudFloor = document.getElementById('hud-floor');
     this.hudGps = document.getElementById('hud-gps');
     this.radarGuide = document.getElementById('radar-guide');
 
-    // Controles virtuales de PC
+    // Controles virtuales
     this.virtualControls = document.getElementById('virtual-controls');
     this.compassSlider = document.getElementById('compass-slider');
     this.btnTurnLeft = document.getElementById('btn-turn-left');
@@ -67,10 +74,37 @@ class UnajARApp {
     this.initEvents();
   }
 
+  showToast(message, duration = 4500) {
+    if (!this.toastEl || !this.toastMessageEl) return;
+    this.toastMessageEl.textContent = message;
+    this.toastEl.classList.add('active');
+
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+
+    if (duration > 0) {
+      this.toastTimeout = setTimeout(() => {
+        this.hideToast();
+      }, duration);
+    }
+  }
+
+  hideToast() {
+    if (this.toastEl) {
+      this.toastEl.classList.remove('active');
+    }
+  }
+
   initEvents() {
     // 1. Modos de inicio
     this.btnStart.addEventListener('click', () => this.startApp(false));
     this.btnSimulate.addEventListener('click', () => this.startApp(true));
+
+    // Cerrar toast
+    if (this.btnCloseToast) {
+      this.btnCloseToast.addEventListener('click', () => this.hideToast());
+    }
 
     // 2. Selector de piso lateral (Elevador de niveles -1 a 4)
     this.floorButtons.forEach((btn) => {
@@ -80,7 +114,7 @@ class UnajARApp {
       });
     });
 
-    // 3. Controles virtuales (Slider y botones de giro para PC)
+    // 3. Controles virtuales (Slider y botones de giro para PC y fallback móvil)
     if (this.compassSlider) {
       this.compassSlider.addEventListener('input', (e) => {
         this.setHeading(parseFloat(e.target.value));
@@ -126,7 +160,7 @@ class UnajARApp {
     // 6. Arrastrar con mouse o touch en pantalla para girar la vista 360°
     const container = document.getElementById('app-container');
     container.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button, select, input, .detail-card, .marker-card, .floor-selector')) return;
+      if (e.target.closest('button, select, input, .detail-card, .marker-card, .floor-selector, .status-toast')) return;
       this.isDragging = true;
       this.lastPointerX = e.clientX;
     });
@@ -199,7 +233,8 @@ class UnajARApp {
     }
     if (this.hudHeading) {
       const cardinal = this.getCardinalDirection(this.userHeading);
-      this.hudHeading.textContent = `${this.userHeading}° (${cardinal})`;
+      const modeLabel = this.isCompassWorking ? '' : ' (Manual)';
+      this.hudHeading.textContent = `${this.userHeading}° (${cardinal})${modeLabel}`;
     }
   }
 
@@ -214,20 +249,9 @@ class UnajARApp {
     this.btnStart.disabled = true;
     this.btnSimulate.disabled = true;
 
-    // Ocultar modal de bienvenida
-    this.permissionModal.style.display = 'none';
-
-    // 1. Intentar levantar la cámara real; si falla, activar fondo virtual
-    try {
-      await this.sensorManager.startCamera(this.videoEl);
-    } catch (camError) {
-      console.warn('Cámara física no disponible, utilizando fondo simulado:', camError);
-      this.videoEl.style.display = 'none';
-      this.simulatedBgEl.style.display = 'block';
-    }
-
     if (this.simulationMode) {
-      // MODO SIMULACIÓN
+      // MODO SIMULACIÓN EXPLICITA
+      this.permissionModal.style.display = 'none';
       const startPoint = SIMULATION_START_POINTS.plaza_central;
       this.userLocation = {
         latitude: startPoint.latitude,
@@ -238,33 +262,95 @@ class UnajARApp {
 
       this.setHeading(0);
       this.setFloor(0); // Planta Baja por defecto
-
       this.hudGps.textContent = 'Plaza Central UNAJ';
       this.virtualControls.classList.add('visible');
-    } else {
-      // MODO REAL EN CELULAR
-      this.hudGps.textContent = 'Conectando sensores...';
 
-      // Sensores de orientación física (brújula)
+      // Intentar levantar cámara o fondo virtual
       try {
-        await this.sensorManager.startOrientation((orientation) => {
-          this.setHeading(orientation.heading);
-        });
-      } catch (sensorErr) {
-        console.warn('Brújula física no detectada:', sensorErr);
-        this.virtualControls.classList.add('visible');
+        await this.sensorManager.startCamera(this.videoEl);
+      } catch (camError) {
+        this.videoEl.style.display = 'none';
+        this.simulatedBgEl.style.display = 'block';
       }
 
-      // GPS Real
-      try {
-        this.sensorManager.startGeolocation((location) => {
-          this.userLocation = location;
-          this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
-        });
-      } catch (gpsErr) {
-        console.error('Error GPS:', gpsErr);
-      }
+      this.renderLoop();
+      return;
     }
+
+    // ==========================================
+    // MODO REAL EN CELULAR
+    // ==========================================
+    this.btnStart.textContent = 'Solicitando acceso...';
+
+    // PASO 1 (CRUCIAL PARA iOS): Solicitar permiso de orientación INMEDIATAMENTE
+    // en el evento de clic del usuario, antes de cualquier otra llamada asíncrona.
+    const orientationPerm = await SensorManager.requestDeviceOrientationPermission();
+    console.log('Permiso de orientación recibido:', orientationPerm);
+
+    // Ocultar modal de bienvenida
+    this.permissionModal.style.display = 'none';
+
+    // ASIGNAR UBICACIÓN BASE INMEDIATA:
+    // Evita que la app se quede bloqueada en blanco esperando al GPS
+    this.userLocation = {
+      latitude: SIMULATION_START_POINTS.plaza_central.latitude,
+      longitude: SIMULATION_START_POINTS.plaza_central.longitude,
+      altitude: 25.0,
+      accuracy: 50,
+      isTemporary: true
+    };
+    this.hudGps.textContent = 'GPS: Buscando señal...';
+
+    // PASO 2: Iniciar cámara trasera
+    try {
+      await this.sensorManager.startCamera(this.videoEl);
+    } catch (camError) {
+      console.warn('Cámara física no disponible:', camError);
+      this.videoEl.style.display = 'none';
+      this.simulatedBgEl.style.display = 'block';
+      this.showToast('⚠️ No se pudo acceder a la cámara. Usando visor virtual.', 5000);
+    }
+
+    // PASO 3: Iniciar listener de Brújula con manejo de eventos y timeout de fallo
+    if (!orientationPerm.granted) {
+      this.isCompassWorking = false;
+      this.showToast('⚠️ Permiso de sensores denegado o no disponible. Controles en pantalla activados.', 6000);
+      this.virtualControls.classList.add('visible');
+      this.setHeading(0);
+    } else {
+      this.sensorManager.startOrientation(
+        (orientation) => {
+          this.isCompassWorking = true;
+          this.setHeading(orientation.heading);
+        },
+        (error) => {
+          console.warn('Fallo en sensores de movimiento:', error);
+          this.isCompassWorking = false;
+          this.showToast('⚠️ No se detectó brújula en el dispositivo. Puedes rotar usando el slider o arrastrando la pantalla.', 6500);
+          this.virtualControls.classList.add('visible');
+          this.setHeading(this.userHeading);
+        }
+      );
+    }
+
+    // PASO 4: Iniciar GPS con actualización fluida y manejo de error
+    this.sensorManager.startGeolocation(
+      (location) => {
+        this.userLocation = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          altitude: location.altitude || 25.0,
+          accuracy: location.accuracy,
+          isTemporary: false
+        };
+        this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
+      },
+      (gpsError) => {
+        console.warn('Aviso de geolocalización:', gpsError.message);
+        this.showToast(`GPS: ${gpsError.message}. Mostrando mapa base del campus.`, 5000);
+        this.hudGps.textContent = 'Campus UNAJ (Base)';
+      }
+    );
 
     // Iniciar bucle de renderizado continuo a 60 FPS
     this.renderLoop();

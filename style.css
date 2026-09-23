@@ -314,6 +314,53 @@ body, html {
   border-top: 1px dashed rgba(255, 255, 255, 0.25);
 }
 
+/* Banner Flotante de Notificaciones / Errores de Sensores */
+.status-toast {
+  position: absolute;
+  top: 110px;
+  left: 14px;
+  right: 14px;
+  max-width: 460px;
+  margin: 0 auto;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(245, 158, 11, 0.25);
+  color: #fef3c7;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.status-toast.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.btn-close-toast {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* Guía radar direccional */
 #radar-guide {
   position: absolute;
@@ -339,7 +386,7 @@ body, html {
   50% { transform: translateX(-50%) translateY(-5px); }
 }
 
-/* CONTROLES VIRTUALES PARA PC / SIMULACIÓN */
+/* CONTROLES VIRTUALES PARA PC / SIMULACIÓN / FALLBACK MÓVIL */
 .virtual-controls-panel {
   display: none;
   position: absolute;

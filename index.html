@@ -30,7 +30,7 @@
       </div>
       <div class="hud-pill">
         <span>UBICACIÓN</span>
-        <span id="hud-gps">Buscando...</span>
+        <span id="hud-gps">Esperando...</span>
       </div>
     </div>
 
@@ -54,13 +54,19 @@
       <button class="floor-btn all-floors" data-floor="all" title="Ver todos los pisos a la vez">ALL</button>
     </div>
 
-    <!-- 6. Guía Radar Direccional cuando el objetivo está fuera del campo de visión -->
+    <!-- 6. Toast Flotante de Notificaciones / Errores de Sensores -->
+    <div id="status-toast" class="status-toast">
+      <span id="toast-message">Notificación de sensores</span>
+      <button id="btn-close-toast" class="btn-close-toast">&times;</button>
+    </div>
+
+    <!-- 7. Guía Radar Direccional cuando el objetivo está fuera del campo de visión -->
     <div id="radar-guide">👈 Gira para ver los edificios</div>
 
-    <!-- 7. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
+    <!-- 8. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
     <div id="virtual-controls" class="virtual-controls-panel">
       <div class="controls-header">
-        <span class="controls-title">🎮 Controles Virtuales (Simulación PC)</span>
+        <span class="controls-title">🎮 Controles Virtuales</span>
         <span class="drag-hint">💡 Arrastra la pantalla para rotar en 360°</span>
       </div>
       
@@ -106,7 +112,7 @@
       </div>
     </div>
 
-    <!-- 8. Modal de Detalle de Edificio / Aula (al tocar un cartel) -->
+    <!-- 9. Modal de Detalle de Edificio / Aula (al tocar un cartel) -->
     <div id="poi-detail-modal" class="detail-modal">
       <div class="detail-card">
         <button id="btn-close-detail" class="btn-close">&times;</button>
@@ -126,7 +132,7 @@
       </div>
     </div>
 
-    <!-- 9. Modal de Permisos y Bienvenida -->
+    <!-- 10. Modal de Permisos y Bienvenida -->
     <div id="permission-modal">
       <div class="modal-content">
         <div class="modal-logo">📍</div>
@@ -136,11 +142,11 @@
           Explora los edificios, aulas y laboratorios de la <strong>Universidad Nacional Arturo Jauretche</strong> desde el subsuelo hasta el 4° piso.
         </p>
         <div class="modal-actions">
-          <button id="btn-simulate" class="btn-primary highlight">
-            🧪 Probar con Simulación (PC y Campus Virtual)
+          <button id="btn-start" class="btn-primary highlight">
+            📱 Activar en Celular (Cámara y Sensores)
           </button>
-          <button id="btn-start" class="btn-secondary">
-            📱 Activar en Celular (Cámara y GPS Real)
+          <button id="btn-simulate" class="btn-secondary">
+            🧪 Probar con Simulación (PC o sin sensores)
           </button>
         </div>
       </div>
