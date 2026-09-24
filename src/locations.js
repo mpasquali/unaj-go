@@ -49,42 +49,7 @@ export const CAMPUS_LOCATIONS = [
   // ==========================================
   // EDIFICIO MOSCONI (Sector Principal, Hall, Auditorio y Pisos Superiores)
   // ==========================================
-  {
-    id: "edificio-mosconi-p4",
-    name: "Aulas de Posgrado & Datacenter",
-    shortName: "Posgrado (P4)",
-    subtitle: "Piso 4 - Edificio Mosconi",
-    description: "Aulas de especialización, maestrías y centro de cómputos central.",
-    category: "academica",
-    floor: 4,
-    color: "#6366f1",
-    icon: "🎓",
-    coords: { latitude: -34.774880, longitude: -58.267880, altitude: 39.0 }
-  },
-  {
-    id: "edificio-mosconi-p3",
-    name: "Gabinetes de Investigación",
-    shortName: "Gabinetes (P3)",
-    subtitle: "Piso 3 - Edificio Mosconi",
-    description: "Boxes de trabajo e investigación para docentes y becarios.",
-    category: "academica",
-    floor: 3,
-    color: "#14b8a6",
-    icon: "🔬",
-    coords: { latitude: -34.774860, longitude: -58.267910, altitude: 35.5 }
-  },
-  {
-    id: "edificio-mosconi-p2",
-    name: "Dirección de Institutos UNAJ",
-    shortName: "Inst. UNAJ (P2)",
-    subtitle: "Piso 2 - Edificio Mosconi",
-    description: "Dirección de institutos de Ingeniería, Sociales y Estudios Iniciales.",
-    category: "administrativa",
-    floor: 2,
-    color: "#8b5cf6",
-    icon: "🏢",
-    coords: { latitude: -34.774870, longitude: -58.267900, altitude: 32.0 }
-  },
+
   {
     id: "edificio-mosconi-p1",
     name: "Aulas Mosconi (Piso 1)",
@@ -99,7 +64,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-mosconi-principal",
-    name: "Edificio Mosconi (Sector Principal) [Ref. 1]",
+    name: "Edificio Mosconi (Sector Principal)",
     shortName: "Mosconi Principal",
     subtitle: "PB - Rectorado y Consejo Superior",
     description: "Núcleo central histórico de la universidad. Rectorado y autoridades.",
@@ -111,7 +76,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-mosconi-auditorio",
-    name: "Auditorio Mosconi [Ref. 17]",
+    name: "Auditorio Mosconi",
     shortName: "Auditorio UNAJ",
     subtitle: "PB - Sector Norte Mosconi",
     description: "Sala mayor para colaciones de grado y eventos académicos.",
@@ -123,7 +88,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-mosconi-hall",
-    name: "Hall Central Mosconi [Ref. 18]",
+    name: "Hall Central Mosconi",
     shortName: "Hall Central",
     subtitle: "PB - Ingreso Principal Interno",
     description: "Punto de encuentro y distribuidor principal del campus.",
@@ -135,7 +100,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-mosconi-subsuelo",
-    name: "Edificio Mosconi (Subsuelo) [Ref. 10]",
+    name: "Edificio Mosconi (Subsuelo)",
     shortName: "Subsuelo Mosconi",
     subtitle: "Subsuelo - Archivo Histórico",
     description: "Depósito de documentación y legajos institucionales.",
