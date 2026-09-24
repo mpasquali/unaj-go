@@ -145,13 +145,189 @@ export const CAMPUS_LOCATIONS = [
     icon: "🗄️",
     coords: { latitude: -34.774500, longitude: -58.268250, altitude: 21.5 }
   },
+  // ==========================================
+  // PUNTOS DE INTERES ESTUDIANTES
+  // ==========================================
+  {
+    id: "buffet-federación-estudiantil",
+    name: "Buffet Federación Estudiantil",
+    shortName: "Buffet Federación Estudiantil",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775775, longitude: -58.268023, altitude: 25.0 }
+  },
+  {
+    id: "centro-copiado",
+    name: "Centro de Copiado",
+    shortName: "Centro de Copiado",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775649, longitude: -58.268103, altitude: 25.0 }
+  },
+  {
+    id: "buffet-el-paso",
+    name: "Buffet El Paso",
+    shortName: "Buffet El Paso",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775657, longitude: -58.268729, altitude: 25.0 }
+  },
+
+  // ==========================================
+  // INSTITUTOS Y SECRETARIAS
+  // ==========================================
+  {
+    id: "edificio-mosconi",
+    name: "Instituto de Ingeniería y Agronomía",
+    shortName: "Instituto de Ingeniería y Agronomía",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775430, longitude: -58.267428, altitude: 25.0 }
+  },
+  {
+    id: "edificio-lcv1",
+    name: "Instituto de Estudios Iniciales y Ciencias Sociales",
+    shortName: "Instituto de Estudios Iniciales y Ciencias Sociales",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775730, longitude: -58.266694, altitude: 25.0 }
+  },
+  {
+    id: "edificio-lcv2",
+    name: "Instituto de Ciencias de la Salud",
+    shortName: "Instituto de Ciencias de la Salud",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "secretaria",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775967, longitude: -58.266411, altitude: 25.0 }
+  },
+  {
+    id: "edificio-vicente-ierace",
+    name: "Nuevo ICS",
+    shortName: "Nuevo ICS",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.776791, longitude: -58.268216, altitude: 25.0 }
+  },
+  {
+    id: "edificio",
+    name: "Gimnasio Kinesiología",
+    shortName: "Gimnasio Kinesiología",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.776606, longitude: -58.268766, altitude: 25.0 }
+  },
+  {
+    id: "secretaria-estudiantes",
+    name: "Departamento de Atención a Estudiantes",
+    shortName: "Departamento de Atención a Estudiantes",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775192, longitude: -58.267908, altitude: 25.0 }
+  },
+  {
+    id: "secretaria-estudiantes",
+    name: "Bienestar Estudiantil",
+    shortName: "Bienestar Estudiantil",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.774930, longitude: -58.267699, altitude: 25.0 }
+  },
+  {
+    id: "secretaria-estudiantes",
+    name: "Departamento de Orientacion Educativa y Discapacidad",
+    shortName: "DOE",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775399, longitude: -58.269556, altitude: 25.0 }
+  },
+  {
+    id: "lactario",
+    name: "Lactario UNAJ",
+    shortName: "Lactario UNAJ",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🏫",
+    coords: { latitude: -34.775127, longitude: -58.269423, altitude: 25.0 }
+  },
+  {
+    id: "hospital-universitario",
+    name: "Centro de APS UNAJ",
+    shortName: "Centro de APS UNAJ",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🧬",
+    coords: { latitude: -34.775145, longitude: -58.269855, altitude: 25.0 }
+  },
+  {
+    id: "consultorios-externos",
+    name: "Consultorios externos HEC",
+    shortName: "Consultorios externos HEC",
+    subtitle: "PB - Aulas y Oficinas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "🧬",
+    coords: { latitude: -34.774826, longitude: -58.269281, altitude: 25.0 }
+  },
+
 
   // ==========================================
   // EDIFICIOS Y PABELLONES DEL PLANO OFICIAL
   // ==========================================
   {
     id: "edificio-savio",
-    name: "Edificio Savio [Ref. 2]",
+    name: "Edificio Savio",
     shortName: "Edificio Savio",
     subtitle: "PB - Aulas y Oficinas",
     description: "Edificio intermediario del campus para cursadas y actividades.",
@@ -163,7 +339,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-pistarini",
-    name: "Edificio Pistarini [Ref. 3]",
+    name: "Edificio Pistarini",
     shortName: "Edificio Pistarini",
     subtitle: "PB - Sector Central",
     description: "Pabellón de actividades académicas generales.",
@@ -174,32 +350,8 @@ export const CAMPUS_LOCATIONS = [
     coords: { latitude: -34.775400, longitude: -58.268000, altitude: 25.0 }
   },
   {
-    id: "edificio-lcv-4-5",
-    name: "Galpones LCV [Ref. 4 y 5]",
-    shortName: "Galpones LCV",
-    subtitle: "PB - Zona Norte Cursos y Talleres",
-    description: "Laboratorios de campo y talleres tecnológicos.",
-    category: "academica",
-    floor: 0,
-    color: "#84cc16",
-    icon: "🛠️",
-    coords: { latitude: -34.773200, longitude: -58.267500, altitude: 25.0 }
-  },
-  {
-    id: "edificio-focem",
-    name: "Edificio FOCEM [Ref. 6]",
-    shortName: "Edificio FOCEM",
-    subtitle: "PB - Complejo Tecnológico",
-    description: "Instalaciones financiadas por FOCEM para áreas técnicas.",
-    category: "academica",
-    floor: 0,
-    color: "#06b6d4",
-    icon: "⚙️",
-    coords: { latitude: -34.773900, longitude: -58.266200, altitude: 25.0 }
-  },
-  {
     id: "edificio-lide",
-    name: "Edificio Ing. Héctor Abraldes / LIDE [Ref. 7]",
+    name: "Edificio Ing. Héctor Abraldes",
     shortName: "LIDE (Ingeniería)",
     subtitle: "PB - Laboratorios Integrados",
     description: "Laboratorios pesados de ingeniería y ensayos mecánicos/electrónicos.",
@@ -211,7 +363,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-hudson",
-    name: "Edificio Guillermo Hudson [Ref. 8]",
+    name: "Edificio Guillermo Hudson",
     shortName: "Edificio Hudson",
     subtitle: "PB - Laboratorio de Química",
     description: "Laboratorios específicos de química, biología y ciencias naturales.",
@@ -219,11 +371,11 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#14b8a6",
     icon: "🧪",
-    coords: { latitude: -34.776300, longitude: -58.267300, altitude: 25.0 }
+    coords: { latitude: -34.775814, longitude: -58.2689506, altitude: 25.0 }
   },
   {
     id: "edificio-ugarte",
-    name: "Edificio Ex-UNQUI / Manuel Ugarte [Ref. 9]",
+    name: "Edificio Manuel Ugarte",
     shortName: "Edificio Ugarte",
     subtitle: "PB - Sector Suroeste",
     description: "Aulas y dependencias de la zona sur del campus.",
@@ -231,35 +383,23 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#a855f7",
     icon: "🏫",
-    coords: { latitude: -34.776900, longitude: -58.269200, altitude: 25.0 }
+    coords: { latitude: -34.775406, longitude: -58.269530, altitude: 25.0 }
   },
   {
-    id: "edificio-manzi",
-    name: "Edificio Homero Manzi (Aulas 18 y 19) [Ref. 11]",
-    shortName: "Edificio Manzi",
-    subtitle: "PB - Zona Sur",
-    description: "Aulas especializadas Homero Manzi.",
-    category: "academica",
-    floor: 0,
-    color: "#d946ef",
-    icon: "📖",
-    coords: { latitude: -34.777200, longitude: -58.269500, altitude: 25.0 }
-  },
-  {
-    id: "edificio-lanteri",
-    name: "Edificio Julieta Lanteri [Ref. 12]",
-    shortName: "Edificio Lanteri",
-    subtitle: "PB - Galpones y Aulas LCV",
-    description: "Espacios de extensión y aulas del sector este.",
+    id: "edificio-simulacion",
+    name: "Hospital Universitario de Simulación",
+    shortName: "Edificio Simulación",
+    subtitle: "PB - Simulación",
+    description: "Aulas del sector este.",
     category: "academica",
     floor: 0,
     color: "#ec4899",
     icon: "🏫",
-    coords: { latitude: -34.776800, longitude: -58.266000, altitude: 25.0 }
+    coords: { latitude: -34.776318, longitude: -58.268884, altitude: 25.0 }
   },
   {
     id: "edificio-dessy",
-    name: "Edificio Silvio Dessy [Ref. 13]",
+    name: "Edificio Silvio Dessy",
     shortName: "Edificio Dessy",
     subtitle: "PB - Bioquímica y Oficinas FOCEM",
     description: "Laboratorios de bioquímica y oficinas del programa FOCEM.",
@@ -267,35 +407,11 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#f43f5e",
     icon: "🧬",
-    coords: { latitude: -34.774900, longitude: -58.265200, altitude: 25.0 }
-  },
-  {
-    id: "edificio-mayol",
-    name: "Edificio Alejandro Mayol [Ref. 16]",
-    shortName: "Centro Mayol",
-    subtitle: "PB - Centro de Política y Territorio",
-    description: "Centro de extensión universitaria, política y territorio.",
-    category: "administrativa",
-    floor: 0,
-    color: "#eab308",
-    icon: "🗺️",
-    coords: { latitude: -34.776100, longitude: -58.270100, altitude: 25.0 }
-  },
-  {
-    id: "dir-infraestructura",
-    name: "Dirección de Infraestructura [Ref. 19]",
-    shortName: "Dir. Infraestructura",
-    subtitle: "PB - Mantenimiento y Obras",
-    description: "Oficinas de planificación y mantenimiento edilicio del campus.",
-    category: "administrativa",
-    floor: 0,
-    color: "#64748b",
-    icon: "🔧",
-    coords: { latitude: -34.777600, longitude: -58.267800, altitude: 25.0 }
+    coords: { latitude: -34.776503, longitude: -58.267379, altitude: 25.0 }
   },
   {
     id: "comedor-padre-mugica",
-    name: "Comedor Padre Mugica [Ref. 20]",
+    name: "Comedor Padre Mugica",
     shortName: "Comedor Universitario",
     subtitle: "PB - Gastronomía y Estar Estudiantil",
     description: "Comedor universitario principal con servicio de almuerzo y cafetería.",
@@ -303,7 +419,19 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#f43f5e",
     icon: "☕",
-    coords: { latitude: -34.775300, longitude: -58.268100, altitude: 25.0 }
+    coords: { latitude: -34.775125, longitude: -58.267976, altitude: 25.0 }
+  },
+  {
+    id: "biblioteca-central",
+    name: "Biblioteca Central UNAJ",
+    shortName: "Biblioteca Central",
+    subtitle: "PB - Biblioteca",
+    description: "Biblioteca Central",
+    category: "servicios",
+    floor: 0,
+    color: "#f43f5e",
+    icon: "🏫",
+    coords: { latitude: -34.776064, longitude: -58.268769, altitude: 25.0 }
   }
 ];
 
