@@ -8,6 +8,7 @@
 body, html {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background-color: #020617;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -18,7 +19,9 @@ body, html {
 #app-container {
   position: relative;
   width: 100vw;
+  width: 100dvw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   cursor: grab;
 }
@@ -497,9 +500,9 @@ body.is-navigating #radar-guide {
 /* Flecha Direccional Dinámica Flotante (sin bloquear clicks de fondo) */
 .nav-compass-arrow-wrapper {
   position: absolute;
-  bottom: 180px;
-  bottom: calc(180px + constant(safe-area-inset-bottom));
-  bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+  bottom: 235px;
+  bottom: calc(235px + constant(safe-area-inset-bottom));
+  bottom: calc(235px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -555,16 +558,18 @@ body.is-navigating #radar-guide {
   pointer-events: none !important;
 }
 
-/* Tarjeta Inferior de Ruta Activa */
+/* Tarjeta Inferior de Ruta Activa (Contenedor flotante independiente) */
 .nav-bottom-card {
   position: absolute;
-  /* Posición elevada (+24px) y protección de Área Segura (Safe Area) para móviles */
-  bottom: 44px;
-  bottom: calc(44px + constant(safe-area-inset-bottom));
-  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+  /* Posición sustancialmente elevada (100px) y protección de Área Segura (Safe Area) para móviles */
+  bottom: 100px;
+  bottom: calc(100px + constant(safe-area-inset-bottom));
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   left: 14px;
   right: 14px;
   max-width: 500px;
+  width: calc(100% - 28px);
+  min-height: 80px;
   margin: 0 auto;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(16px);
@@ -576,10 +581,11 @@ body.is-navigating #radar-guide {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9);
   pointer-events: auto !important;
   touch-action: manipulation;
-  z-index: 45 !important;
+  flex-shrink: 0;
+  z-index: 60 !important;
   animation: slideUp 0.2s ease-out;
 }
 
