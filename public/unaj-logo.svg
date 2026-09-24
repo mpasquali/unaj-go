@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" fill="none">
+  <defs>
+    <linearGradient id="unajBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="unajSunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="60%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+    <linearGradient id="unajBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <filter id="unajGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Escudo Base / Contenedor Institucional -->
+  <rect x="4" y="4" width="112" height="112" rx="28" fill="url(#unajBgGrad)" stroke="rgba(56, 189, 248, 0.45)" stroke-width="2.5" />
+  
+  <!-- Anillo decorativo interior -->
+  <circle cx="60" cy="52" r="38" stroke="rgba(56, 189, 248, 0.2)" stroke-width="1.5" stroke-dasharray="3 3" />
+
+  <!-- Sol / Llama de Arturo Jauretche (Conocimiento, Soberanía y Patria) -->
+  <path d="M60 22 C63 29, 71 33, 71 42 C71 50, 64 56, 60 58 C56 56, 49 50, 49 42 C49 33, 57 29, 60 22 Z" fill="url(#unajSunGrad)" filter="url(#unajGlow)" />
+  <circle cx="60" cy="43" r="5.5" fill="#fef08a" />
+  
+  <!-- Arcos / Alas de Expansión Académica e Institutos UNAJ -->
+  <!-- Ala Izquierda -->
+  <path d="M48 37 C42 41, 35 48, 35 57 C35 65, 41 71, 49 73 C44 70, 41 65, 41 58 C41 51, 45 44, 48 37 Z" fill="url(#unajBlueGrad)" />
+  <path d="M53 47 C48 51, 45 56, 45 63 C45 68, 48 73, 54 75 C50 72, 48 68, 48 63 C48 57, 51 52, 53 47 Z" fill="#38bdf8" opacity="0.85" />
+  
+  <!-- Ala Derecha -->
+  <path d="M72 37 C78 41, 85 48, 85 57 C85 65, 79 71, 71 73 C76 70, 79 65, 79 58 C79 51, 75 44, 72 37 Z" fill="url(#unajBlueGrad)" />
+  <path d="M67 47 C72 51, 75 56, 75 63 C75 68, 72 73, 66 75 C70 72, 72 68, 72 63 C72 57, 69 52, 67 47 Z" fill="#38bdf8" opacity="0.85" />
+
+  <!-- Base del Saber / Libro Abierto estilizado -->
+  <path d="M38 72 C48 69, 56 73, 60 77 C64 73, 72 69, 82 72 C74 76, 65 77, 60 82 C55 77, 46 76, 38 72 Z" fill="url(#unajBlueGrad)" />
+
+  <!-- Tipografía Oficial UNAJ -->
+  <text x="60" y="98" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="17" fill="#ffffff" letter-spacing="2.5">UNAJ</text>
+  
+  <!-- Línea inferior institucional -->
+  <circle cx="36" cy="107" r="1.5" fill="#38bdf8" />
+  <text x="60" y="109" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="6.5" fill="#94a3b8" letter-spacing="1.2">UNIVERSIDAD</text>
+  <circle cx="84" cy="107" r="1.5" fill="#38bdf8" />
+</svg>
+

@@ -80,6 +80,10 @@ body, html {
   flex-direction: column;
   align-items: center;
   pointer-events: auto !important;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   will-change: transform, left, top;
   cursor: pointer;
   transition: transform 0.08s ease-out;
@@ -100,6 +104,9 @@ body, html {
   min-width: 185px;
   max-width: 250px;
   transition: transform 0.15s, box-shadow 0.15s;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 .ar-marker:hover .marker-card {
@@ -500,9 +507,9 @@ body.is-navigating #radar-guide {
 /* Flecha Direccional Dinámica Flotante (sin bloquear clicks de fondo) */
 .nav-compass-arrow-wrapper {
   position: absolute;
-  bottom: 235px;
-  bottom: calc(235px + constant(safe-area-inset-bottom));
-  bottom: calc(235px + env(safe-area-inset-bottom, 0px));
+  bottom: 245px;
+  bottom: calc(245px + constant(safe-area-inset-bottom));
+  bottom: calc(245px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -561,10 +568,10 @@ body.is-navigating #radar-guide {
 /* Tarjeta Inferior de Ruta Activa (Contenedor flotante independiente) */
 .nav-bottom-card {
   position: absolute;
-  /* Posición sustancialmente elevada (100px) y protección de Área Segura (Safe Area) para móviles */
-  bottom: 100px;
-  bottom: calc(100px + constant(safe-area-inset-bottom));
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  /* Posición sustancialmente elevada (120px) y protección de Área Segura (Safe Area) para móviles */
+  bottom: 120px;
+  bottom: calc(120px + constant(safe-area-inset-bottom));
+  bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   left: 14px;
   right: 14px;
   max-width: 500px;
@@ -585,6 +592,7 @@ body.is-navigating #radar-guide {
   pointer-events: auto !important;
   touch-action: manipulation;
   flex-shrink: 0;
+  box-sizing: border-box;
   z-index: 60 !important;
   animation: slideUp 0.2s ease-out;
 }
@@ -594,6 +602,7 @@ body.is-navigating #radar-guide {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -1389,16 +1398,31 @@ body.is-navigating #radar-guide {
 }
 
 .modal-logo {
-  width: 58px;
-  height: 58px;
-  background: linear-gradient(135deg, #0284c7, #38bdf8);
-  border-radius: 18px;
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  margin: 0 auto 16px;
-  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.4);
+  filter: drop-shadow(0 8px 24px rgba(40, 190, 252, 0.45));
+  animation: logoFloat 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes logoFloat {
+  0% { transform: translateY(0px) scale(1); }
+  100% { transform: translateY(-3px) scale(1.02); }
+}
+
+.modal-logo-img,
+.modal-logo svg,
+.modal-logo img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 20px;
+  display: block;
 }
 
 .modal-title {
@@ -1426,31 +1450,36 @@ body.is-navigating #radar-guide {
 .modal-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  width: 100%;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 14px;
+  padding: 16px 20px;
   background: #0284c7;
   color: #fff;
-  border: none;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 700;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);
   transition: all 0.15s;
 }
 
 .btn-primary.highlight {
-  background: linear-gradient(135deg, #0284c7, #0284c7);
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45), 0 0 12px rgba(56, 189, 248, 0.2);
 }
 
 .btn-primary:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 .btn-secondary {

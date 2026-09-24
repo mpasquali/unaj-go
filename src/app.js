@@ -18,7 +18,6 @@ class UnajARApp {
     // Estado principal
     this.userLocation = null;
     this.userHeading = 0; // Rumbo en grados (0° a 360°)
-    this.simulationMode = false;
     this.activeCategory = 'todas';
     this.activeFloor = 0; // Planta Baja por defecto (0), o 'all', 1, 2, 3, 4, -1
     this.userAltitude = 25.0; // Altura base sobre nivel del mar en metros (PB)
@@ -44,9 +43,9 @@ class UnajARApp {
     this.videoEl = document.getElementById('camera-feed');
     this.simulatedBgEl = document.getElementById('simulated-background');
     this.markersContainer = document.getElementById('markers-container');
+    this.markerElements = new Map();
     this.permissionModal = document.getElementById('permission-modal');
     this.btnStart = document.getElementById('btn-start');
-    this.btnSimulate = document.getElementById('btn-simulate');
 
     // Notificaciones / Toast
     this.toastEl = document.getElementById('status-toast');
@@ -223,9 +222,15 @@ class UnajARApp {
   }
 
   initEvents() {
-    // 1. Modos de inicio
-    this.btnStart.addEventListener('click', () => this.startApp(false));
-    this.btnSimulate.addEventListener('click', () => this.startApp(true));
+    // 1. Inicio de la aplicación (Cámara y Sensores)
+    if (this.btnStart) {
+      this.btnStart.addEventListener('click', () => this.startApp());
+      this.btnStart.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
+        this.startApp();
+      });
+    }
 
     if (this.btnCloseToast) {
       this.btnCloseToast.addEventListener('click', () => this.hideToast());
@@ -969,6 +974,15 @@ class UnajARApp {
       });
     }
 
+    // Limpiar marcadores y recargar vista general del campus
+    if (this.markerElements) {
+      this.markerElements.forEach((marker) => marker.remove());
+      this.markerElements.clear();
+    }
+    if (this.markersContainer) {
+      this.markersContainer.innerHTML = '';
+    }
+
     // Limpiar estado activo en las tarjetas del modal de destinos
     if (this.destListContainer) {
       const activeCards = this.destListContainer.querySelectorAll('.is-active-target');
@@ -1095,42 +1109,17 @@ class UnajARApp {
     return directions[index];
   }
 
-  async startApp(simulate = false) {
-    this.simulationMode = simulate;
-    this.btnStart.disabled = true;
-    this.btnSimulate.disabled = true;
-
-    if (this.simulationMode) {
-      this.permissionModal.style.display = 'none';
-      const startPoint = SIMULATION_START_POINTS.plaza_central;
-      this.userLocation = {
-        latitude: startPoint.latitude,
-        longitude: startPoint.longitude,
-        altitude: startPoint.altitude,
-        accuracy: 5
-      };
-
-      this.setHeading(0);
-      this.setFloor(0);
-      this.hudGps.textContent = 'Plaza Central UNAJ';
-      this.virtualControls.classList.add('visible');
-
-      try {
-        await this.sensorManager.startCamera(this.videoEl);
-      } catch (camError) {
-        this.videoEl.style.display = 'none';
-        this.simulatedBgEl.style.display = 'block';
-      }
-
-      this.renderLoop();
-      return;
+  async startApp() {
+    if (this.btnStart) {
+      this.btnStart.disabled = true;
+      this.btnStart.textContent = 'Solicitando acceso...';
     }
 
-    // Modo Celular
-    this.btnStart.textContent = 'Solicitando acceso...';
     const orientationPerm = await SensorManager.requestDeviceOrientationPermission();
 
-    this.permissionModal.style.display = 'none';
+    if (this.permissionModal) {
+      this.permissionModal.style.display = 'none';
+    }
 
     this.userLocation = {
       latitude: SIMULATION_START_POINTS.plaza_central.latitude,
@@ -1139,7 +1128,9 @@ class UnajARApp {
       accuracy: 50,
       isTemporary: true
     };
-    this.hudGps.textContent = 'GPS: Buscando señal...';
+    if (this.hudGps) {
+      this.hudGps.textContent = 'GPS: Buscando señal...';
+    }
 
     try {
       await this.sensorManager.startCamera(this.videoEl);
@@ -1211,10 +1202,14 @@ class UnajARApp {
       ? [targetDest]
       : getLocationsByFilter(this.activeCategory, this.activeFloor);
 
-    this.markersContainer.innerHTML = '';
+    if (!this.markerElements) {
+      this.markerElements = new Map();
+    }
+
     let anyVisible = false;
     let closestBuilding = null;
     let minDistance = Infinity;
+    const visibleIds = new Set();
 
     locations.forEach((building) => {
       const distance = calculateDistance(this.userLocation, building.coords);
@@ -1241,10 +1236,19 @@ class UnajARApp {
 
       if (projection.isVisible) {
         anyVisible = true;
+        visibleIds.add(building.id);
         const isNavTarget = Boolean(this.activeDestination && this.activeDestination.id === building.id);
         this.renderMarkerElement(building, distance, projection.x, projection.y, isNavTarget);
       }
     });
+
+    // Eliminar del DOM marcadores que ya no están visibles o que salieron del filtro
+    for (const [id, marker] of this.markerElements.entries()) {
+      if (!visibleIds.has(id)) {
+        marker.remove();
+        this.markerElements.delete(id);
+      }
+    }
 
     // Solo mostrar radar guide si no hay navegación activa
     if (!this.activeDestination && !this.isNavigating) {
@@ -1262,19 +1266,13 @@ class UnajARApp {
     }
   }
 
-  renderMarkerElement(building, distance, x, y, isNavTarget = false) {
+  createMarkerElement(building) {
     const marker = document.createElement('div');
-    marker.className = `ar-marker ${isNavTarget ? 'is-nav-target' : ''}`;
-    marker.style.left = `${x}px`;
-    marker.style.top = `${y}px`;
-
-    const scale = Math.max(0.7, Math.min(1.15, 1.25 - distance / 400));
-    marker.style.transform = `translate(-50%, -100%) scale(${scale})`;
-
+    marker.className = 'ar-marker';
     const floorCode = getFloorCode(building.floor);
 
     marker.innerHTML = `
-      <div class="marker-card ${isNavTarget ? 'highlight-target' : ''}" style="border-top-color: ${building.color}">
+      <div class="marker-card" style="border-top-color: ${building.color}">
         <div class="marker-badge" style="background-color: ${building.color}">
           <span class="marker-icon">${building.icon || '📍'}</span>
         </div>
@@ -1284,18 +1282,108 @@ class UnajARApp {
             <span class="marker-floor-tag">${floorCode}</span>
           </div>
           <p class="marker-subtitle">${building.subtitle}</p>
-          <span class="marker-distance">📍 ${Math.round(distance)} m</span>
+          <span class="marker-distance">📍 -- m</span>
         </div>
       </div>
       <div class="marker-arrow" style="border-top-color: ${building.color}"></div>
     `;
 
-    marker.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showBuildingDetails(building, distance);
-    });
+    // Interacción táctil y clic directa en pantallas móviles y desktop:
+    // Acción directa: Al tocar o hacer clic en un pin flotante en la pantalla de la cámara,
+    // se selecciona automáticamente como destino activo e inicia la ruta ("Ir") de forma inmediata.
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastActionTime = 0;
 
-    this.markersContainer.appendChild(marker);
+    const handleMarkerSelect = (e) => {
+      if (e) {
+        e.stopPropagation();
+        if (e.type === 'click' && Date.now() - lastActionTime < 600) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+        if (e.type === 'touchend' || e.type === 'touchstart') {
+          lastActionTime = Date.now();
+        }
+        if (e.cancelable && e.type !== 'touchstart') {
+          e.preventDefault();
+        }
+      }
+
+      // Si el modal de detalle o selector de destinos estuvieran abiertos, cerrarlos
+      if (this.detailModal) this.detailModal.classList.remove('active');
+      this.closeDestinationPicker();
+
+      // Iniciar la ruta inmediatamente hacia este edificio/aula
+      this.calculateAndStartRoute(building);
+    };
+
+    const onTouchStart = (e) => {
+      e.stopPropagation();
+      if (e.touches && e.touches[0]) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      e.stopPropagation();
+      if (e.changedTouches && e.changedTouches[0]) {
+        const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+        // Si arrastró el dedo más de 15px, considerar gesto de cámara/giro, no toque de selección
+        if (dx > 15 || dy > 15) return;
+      }
+      handleMarkerSelect(e);
+    };
+
+    marker.onclick = handleMarkerSelect;
+    marker.ontouchstart = onTouchStart;
+    marker.ontouchend = onTouchEnd;
+    marker.addEventListener('click', handleMarkerSelect);
+    marker.addEventListener('touchstart', onTouchStart, { passive: false });
+    marker.addEventListener('touchend', onTouchEnd, { passive: false });
+    marker.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    return marker;
+  }
+
+  renderMarkerElement(building, distance, x, y, isNavTarget = false) {
+    if (!this.markerElements) {
+      this.markerElements = new Map();
+    }
+
+    let marker = this.markerElements.get(building.id);
+    if (!marker) {
+      marker = this.createMarkerElement(building);
+      this.markerElements.set(building.id, marker);
+      this.markersContainer.appendChild(marker);
+    }
+
+    marker.className = `ar-marker ${isNavTarget ? 'is-nav-target' : ''}`;
+    marker.style.left = `${x}px`;
+    marker.style.top = `${y}px`;
+    marker.style.zIndex = isNavTarget ? '35' : String(Math.max(1, Math.min(30, Math.round(1000 - distance))));
+
+    const scale = Math.max(0.7, Math.min(1.15, 1.25 - distance / 400));
+    marker.style.transform = `translate(-50%, -100%) scale(${scale})`;
+    marker.style.display = 'flex';
+
+    const distEl = marker.querySelector('.marker-distance');
+    if (distEl) {
+      distEl.textContent = `📍 ${Math.round(distance)} m`;
+    }
+
+    const cardEl = marker.querySelector('.marker-card');
+    if (cardEl) {
+      if (isNavTarget) {
+        cardEl.classList.add('highlight-target');
+      } else {
+        cardEl.classList.remove('highlight-target');
+      }
+    }
+
+    return marker;
   }
 
   showBuildingDetails(building, distance) {

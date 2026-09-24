@@ -234,18 +234,17 @@
     <!-- 12. Modal de Permisos y Bienvenida -->
     <div id="permission-modal">
       <div class="modal-content">
-        <div class="modal-logo">📍</div>
+        <div class="modal-logo" title="Universidad Nacional Arturo Jauretche">
+          <img src="./logo.svg" alt="Logotipo Oficial UNAJ" class="modal-logo-img" width="92" height="92" loading="eager" decoding="async">
+        </div>
         <h1 class="modal-title">UNAJ Go</h1>
         <p class="modal-subtitle">Realidad Aumentada & Navegación</p>
         <p class="modal-description">
           Encuentra cualquier edificio, aula o laboratorio de la <strong>Universidad Nacional Arturo Jauretche</strong> con guía GPS paso a paso en tiempo real.
         </p>
         <div class="modal-actions">
-          <button id="btn-start" class="btn-primary highlight">
+          <button id="btn-start" class="btn-primary highlight" type="button" aria-label="Activar en Celular (Cámara y Sensores)">
             📱 Activar en Celular (Cámara y Sensores)
-          </button>
-          <button id="btn-simulate" class="btn-secondary">
-            🧪 Probar con Simulación (PC o sin sensores)
           </button>
         </div>
       </div>
