@@ -32,6 +32,7 @@ class UnajARApp {
     // Estado de Navegación y Destino
     this._selectedDestination = null; // POI de destino seleccionado
     this.activeDestination = null; // POI de destino activo
+    this.isNavigating = false; // Bandera de navegación activa para vista minimalista limpia
     this.selectedPOIForDetail = null; // POI abierto en modal de detalles
 
     // Control de arrastre con mouse/touch para PC o fallback
@@ -39,6 +40,7 @@ class UnajARApp {
     this.lastPointerX = 0;
 
     // Referencias al DOM - Base
+    this.appContainer = document.getElementById('app-container');
     this.videoEl = document.getElementById('camera-feed');
     this.simulatedBgEl = document.getElementById('simulated-background');
     this.markersContainer = document.getElementById('markers-container');
@@ -52,6 +54,7 @@ class UnajARApp {
     this.btnCloseToast = document.getElementById('btn-close-toast');
 
     // HUD y Telemetría
+    this.hudOverlay = document.getElementById('hud-overlay');
     this.hudHeading = document.getElementById('hud-heading');
     this.hudFloor = document.getElementById('hud-floor');
     this.hudGps = document.getElementById('hud-gps');
@@ -71,6 +74,9 @@ class UnajARApp {
     this.btnCancelNav = document.getElementById('btn-cancel-nav');
 
     // Selector de Destino Modal & Buscador
+    this.topNavBar = document.getElementById('top-nav-bar');
+    this.categoryBar = document.getElementById('category-bar');
+    this.floorElevator = document.getElementById('floor-elevator');
     this.btnOpenDestPicker = document.getElementById('btn-open-destination-picker');
     this.searchBtnLabel = document.getElementById('search-btn-label');
     this.searchBtnBadge = document.getElementById('search-btn-badge');
@@ -109,6 +115,15 @@ class UnajARApp {
     this.initEvents();
   }
 
+  get isNavigating() {
+    return Boolean(this._isNavigating || this.activeDestination || this._selectedDestination);
+  }
+
+  set isNavigating(val) {
+    this._isNavigating = Boolean(val);
+    this.setMinimalNavMode(this._isNavigating);
+  }
+
   get selectedDestination() {
     return this._selectedDestination || this.activeDestination || null;
   }
@@ -116,6 +131,31 @@ class UnajARApp {
   set selectedDestination(val) {
     this._selectedDestination = val || null;
     this.activeDestination = val || null;
+    this._isNavigating = Boolean(val);
+    this.setMinimalNavMode(this._isNavigating);
+  }
+
+  /**
+   * Conmuta la vista minimalista / limpia de Realidad Aumentada:
+   * Cuando isNav es true, oculta automáticamente elementos secundarios (display: none / clase is-navigating).
+   * Cuando isNav es false, restaura la vista general completa del campus.
+   */
+  setMinimalNavMode(isNav) {
+    const active = Boolean(isNav);
+    if (this.appContainer) {
+      this.appContainer.classList.toggle('is-navigating', active);
+    }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('is-navigating', active);
+    }
+
+    const displayVal = active ? 'none' : '';
+
+    if (this.hudOverlay) this.hudOverlay.style.display = displayVal;
+    if (this.topNavBar) this.topNavBar.style.display = displayVal;
+    if (this.categoryBar) this.categoryBar.style.display = displayVal;
+    if (this.floorElevator) this.floorElevator.style.display = displayVal;
+    if (this.radarGuide && active) this.radarGuide.style.display = 'none';
   }
 
   /**
@@ -462,12 +502,68 @@ class UnajARApp {
       });
     }
 
-    // 10. Cancelar Navegación Activa
+    // 10. Cancelar Navegación Activa (Soporte táctil explícito con 0ms de respuesta en móviles)
     if (this.btnCancelNav) {
-      this.btnCancelNav.addEventListener('click', (e) => {
-        e.stopPropagation();
+      let cancelTouchStartX = 0;
+      let cancelTouchStartY = 0;
+      let lastCancelTouchTime = 0;
+
+      const handleCancelAction = (e) => {
+        if (e) {
+          e.stopPropagation();
+          // Debounce contra clicks sintéticos en móviles (300ms delay)
+          if (e.type === 'click' && Date.now() - lastCancelTouchTime < 600) {
+            if (e.cancelable) e.preventDefault();
+            return;
+          }
+          if (e.type === 'touchend' || e.type === 'touchstart') {
+            lastCancelTouchTime = Date.now();
+          }
+          if (e.cancelable && e.type !== 'touchstart') {
+            e.preventDefault();
+          }
+        }
         this.cancelNavigation();
-      });
+      };
+
+      // onTouchStart: Detiene propagación inmediata hacia la tarjeta contenedora y el visor AR
+      const onCancelTouchStart = (e) => {
+        e.stopPropagation();
+        if (e.touches && e.touches[0]) {
+          cancelTouchStartX = e.touches[0].clientX;
+          cancelTouchStartY = e.touches[0].clientY;
+        }
+      };
+
+      // onTouchEnd: Activación táctil instantánea al soltar el dedo si no fue un deslizamiento
+      const onCancelTouchEnd = (e) => {
+        e.stopPropagation();
+        if (e.changedTouches && e.changedTouches[0]) {
+          const dx = Math.abs(e.changedTouches[0].clientX - cancelTouchStartX);
+          const dy = Math.abs(e.changedTouches[0].clientY - cancelTouchStartY);
+          // Si el desplazamiento fue mayor a 12px, se considera scroll o gesto y se descarta
+          if (dx > 12 || dy > 12) return;
+        }
+        handleCancelAction(e);
+      };
+
+      // Asignación explícita de callbacks en propiedades del elemento para máxima compatibilidad
+      this.btnCancelNav.onclick = handleCancelAction;
+      this.btnCancelNav.ontouchstart = onCancelTouchStart;
+      this.btnCancelNav.ontouchend = onCancelTouchEnd;
+
+      // Event listeners estándar
+      this.btnCancelNav.addEventListener('click', handleCancelAction);
+      this.btnCancelNav.addEventListener('touchstart', onCancelTouchStart, { passive: false });
+      this.btnCancelNav.addEventListener('touchend', onCancelTouchEnd, { passive: false });
+      this.btnCancelNav.addEventListener('pointerdown', (e) => e.stopPropagation());
+    }
+
+    // Aislamiento táctil de la tarjeta inferior de navegación para evitar interferencias con el visor AR
+    const navBottomCard = document.querySelector('.nav-bottom-card');
+    if (navBottomCard) {
+      navBottomCard.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      navBottomCard.addEventListener('pointerdown', (e) => e.stopPropagation());
     }
 
     // 11. Iniciar ruta desde tarjeta de detalle con Validación
@@ -798,6 +894,7 @@ class UnajARApp {
   }
 
   startNavigation(poi) {
+    this._isNavigating = true;
     this.selectedDestination = poi;
     this.activeDestination = poi;
 
@@ -807,6 +904,9 @@ class UnajARApp {
       this.showToast(`Cambiando a nivel ${getFloorLabel(poi.floor)}`, 3000);
     }
 
+    // Activar modo minimalista / limpio en la interfaz (oculta telemetría, buscador, filtros y elevador)
+    this.setMinimalNavMode(true);
+
     // Actualizar UI del panel inferior de navegación
     if (this.navDestIcon) this.navDestIcon.textContent = poi.icon || '🏛️';
     if (this.navDestName) this.navDestName.textContent = poi.name;
@@ -814,20 +914,76 @@ class UnajARApp {
     if (this.navDestSubtitle) this.navDestSubtitle.textContent = poi.subtitle;
     if (this.searchBtnLabel) this.searchBtnLabel.textContent = `Ruta: ${poi.shortName || poi.name}`;
 
-    // Activar panel y ocultar guía de radar general
+    // Activar panel de navegación y ocultar guía de radar general
     if (this.navHud) this.navHud.classList.add('active');
     if (this.radarGuide) this.radarGuide.style.display = 'none';
+
+    // Filtrar marcadores de Realidad Aumentada de inmediato para enfocar EXCLUSIVAMENTE el destino
+    this.updateMarkers();
 
     this.showToast(`🎯 Guía iniciada hacia: ${poi.name}`, 4000);
   }
 
   cancelNavigation() {
+    this._isNavigating = false;
     this.selectedDestination = null;
     this.activeDestination = null;
+    this._selectedDestination = null;
     this.setLoading(false);
+
+    // Desactivar modo minimalista: restaurar barras de telemetría, filtros y elevador
+    this.setMinimalNavMode(false);
+
+    // Ocultar panel flotante inferior y banner de llegada
     if (this.navHud) this.navHud.classList.remove('active');
-    if (this.searchBtnLabel) this.searchBtnLabel.textContent = 'Buscar destino o aula...';
     if (this.navArrivalBanner) this.navArrivalBanner.classList.remove('active');
+
+    // Restablecer interfaz superior de búsqueda
+    if (this.searchBtnLabel) this.searchBtnLabel.textContent = 'Buscar destino o aula...';
+    if (this.searchBtnBadge) {
+      this.searchBtnBadge.textContent = 'Ruta';
+      this.searchBtnBadge.classList.remove('loading');
+    }
+
+    // Limpiar instrucción flotante de dirección y rotación de flecha AR
+    if (this.navTurnInstruction) {
+      this.navTurnInstruction.textContent = 'Sigue derecho';
+      this.navTurnInstruction.style.backgroundColor = '';
+    }
+    if (this.navArrow) {
+      this.navArrow.style.transform = 'rotate(0deg)';
+    }
+
+    // Restablecer valores numéricos y metadatos del panel de navegación
+    if (this.navDistanceVal) this.navDistanceVal.textContent = '--';
+    if (this.navEtaText) this.navEtaText.textContent = '';
+    if (this.navDestName) this.navDestName.textContent = '';
+    if (this.navDestSubtitle) this.navDestSubtitle.textContent = '';
+    if (this.navDestFloor) this.navDestFloor.textContent = '';
+
+    // Limpiar clases de objetivo destacado en los marcadores de la vista AR
+    if (this.markersContainer) {
+      const activeNavMarkers = this.markersContainer.querySelectorAll('.is-nav-target, .highlight-target');
+      activeNavMarkers.forEach((el) => {
+        el.classList.remove('is-nav-target', 'highlight-target');
+      });
+    }
+
+    // Limpiar estado activo en las tarjetas del modal de destinos
+    if (this.destListContainer) {
+      const activeCards = this.destListContainer.querySelectorAll('.is-active-target');
+      activeCards.forEach((c) => c.classList.remove('is-active-target'));
+      const routeBtns = this.destListContainer.querySelectorAll('.btn-start-route');
+      routeBtns.forEach((btn) => {
+        if (btn.textContent === 'En Curso') {
+          btn.textContent = 'Ir 🚀';
+        }
+      });
+    }
+
+    // Actualizar marcadores inmediatamente para restaurar todos los edificios del campus
+    this.updateMarkers();
+
     this.showToast('Navegación finalizada.', 2500);
   }
 
@@ -1048,7 +1204,12 @@ class UnajARApp {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
 
-    const locations = getLocationsByFilter(this.activeCategory, this.activeFloor);
+    // Modo minimalista: cuando la navegación esté activa, filtrar para mostrar
+    // EXCLUSIVAMENTE el destino actual (ocultando cualquier otro edificio/pin lejano del mapa)
+    const targetDest = this.activeDestination || this.selectedDestination;
+    const locations = (this.isNavigating && targetDest)
+      ? [targetDest]
+      : getLocationsByFilter(this.activeCategory, this.activeFloor);
 
     this.markersContainer.innerHTML = '';
     let anyVisible = false;
@@ -1080,13 +1241,13 @@ class UnajARApp {
 
       if (projection.isVisible) {
         anyVisible = true;
-        const isNavTarget = this.activeDestination && this.activeDestination.id === building.id;
+        const isNavTarget = Boolean(this.activeDestination && this.activeDestination.id === building.id);
         this.renderMarkerElement(building, distance, projection.x, projection.y, isNavTarget);
       }
     });
 
     // Solo mostrar radar guide si no hay navegación activa
-    if (!this.activeDestination) {
+    if (!this.activeDestination && !this.isNavigating) {
       if (!anyVisible && closestBuilding) {
         const bearing = calculateBearing(this.userLocation, closestBuilding.coords);
         const deltaAngle = (bearing - this.userHeading + 540) % 360 - 180;

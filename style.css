@@ -200,6 +200,12 @@ body, html {
   gap: 8px;
   z-index: 20;
   pointer-events: none;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hud-pill {
@@ -241,6 +247,12 @@ body, html {
   z-index: 70 !important; /* Muy por encima del canvas de la cámara y marcadores AR */
   pointer-events: auto !important;
   touch-action: manipulation !important;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #btn-open-destination-picker,
@@ -383,6 +395,12 @@ body, html {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.65);
   max-height: calc(100vh - 220px);
   overflow-y: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .floor-selector::-webkit-scrollbar {
@@ -435,6 +453,33 @@ body, html {
 }
 
 /* ======================================================== */
+/* MODO NAVEGACIÓN MINIMALISTA / LIMPIO                      */
+/* Oculta automáticamente elementos flotantes secundarios    */
+/* cuando la navegación está activa (isNavigating === true). */
+/* Prioriza exclusivamente:                                 */
+/* 1. La vista de la cámara de fondo                         */
+/* 2. La tarjeta de instrucción direccional y flecha AR     */
+/* 3. La tarjeta inferior con destino y botón Salir          */
+/* ======================================================== */
+#app-container.is-navigating #hud-overlay,
+body.is-navigating #hud-overlay,
+#app-container.is-navigating #top-nav-bar,
+body.is-navigating #top-nav-bar,
+#app-container.is-navigating #category-bar,
+body.is-navigating #category-bar,
+#app-container.is-navigating #floor-elevator,
+body.is-navigating #floor-elevator,
+#app-container.is-navigating .floor-selector,
+body.is-navigating .floor-selector,
+#app-container.is-navigating #radar-guide,
+body.is-navigating #radar-guide {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ======================================================== */
 /* SISTEMA DE NAVEGACIÓN GPS PASO A PASO (MODO RUTA ACTIVA) */
 /* ======================================================== */
 .navigation-hud {
@@ -460,6 +505,18 @@ body, html {
   align-items: center;
   gap: 8px;
   pointer-events: none !important;
+  animation: navFadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes navFadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 .nav-arrow-dial {
@@ -516,6 +573,8 @@ body, html {
   gap: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
   pointer-events: auto !important;
+  touch-action: manipulation;
+  z-index: 45 !important;
   animation: slideUp 0.2s ease-out;
 }
 
@@ -525,6 +584,7 @@ body, html {
   gap: 4px;
   flex: 1;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .nav-destination-meta {
@@ -598,22 +658,41 @@ body, html {
 }
 
 .btn-cancel-nav {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.6);
   color: #fca5a5;
-  padding: 8px 14px;
+  padding: 8px 16px;
+  min-height: 42px;
+  min-width: 76px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer !important;
   pointer-events: auto !important;
-  transition: all 0.15s;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(239, 68, 68, 0.3);
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  z-index: 50 !important;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .btn-cancel-nav:hover {
   background: #ef4444;
   color: #fff;
+  border-color: #f87171;
+}
+
+.btn-cancel-nav:active {
+  background: #dc2626;
+  color: #fff;
+  transform: scale(0.94);
 }
 
 /* Banner de Llegada */
