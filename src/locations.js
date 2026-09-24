@@ -121,7 +121,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "servicios",
     floor: 0,
-    color: "#f97316",
+    color: "#f4be3f",
     icon: "☕",
     coords: { latitude: -34.775775, longitude: -58.268023, altitude: 25.0 }
   },
@@ -145,7 +145,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "servicios",
     floor: 0,
-    color: "#f97316",
+    color: "#f4be3f",
     icon: "☕",
     coords: { latitude: -34.775657, longitude: -58.268729, altitude: 25.0 }
   },
@@ -161,7 +161,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.775430, longitude: -58.267428, altitude: 25.0 }
   },
@@ -173,7 +173,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.775730, longitude: -58.266694, altitude: 25.0 }
   },
@@ -185,7 +185,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.775967, longitude: -58.266411, altitude: 25.0 }
   },
@@ -221,7 +221,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.775192, longitude: -58.267908, altitude: 25.0 }
   },
@@ -233,7 +233,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.774930, longitude: -58.267699, altitude: 25.0 }
   },
@@ -245,7 +245,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "administrativa",
     floor: 0,
-    color: "#f97316",
+    color: "#2516f9",
     icon: "🏫",
     coords: { latitude: -34.775399, longitude: -58.269556, altitude: 25.0 }
   },
@@ -382,7 +382,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Comedor universitario principal con servicio de almuerzo y cafetería.",
     category: "servicios",
     floor: 0,
-    color: "#f43f5e",
+    color: "#f4be3f",
     icon: "☕",
     coords: { latitude: -34.775125, longitude: -58.267976, altitude: 25.0 }
   },
@@ -394,7 +394,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Biblioteca Central",
     category: "servicios",
     floor: 0,
-    color: "#f43f5e",
+    color: "#1cba2e",
     icon: "🏫",
     coords: { latitude: -34.776064, longitude: -58.268769, altitude: 25.0 }
   }
