@@ -133,7 +133,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "servicios",
     floor: 0,
-    color: "#f97316",
+    color: "#28843c",
     icon: "🏫",
     coords: { latitude: -34.775649, longitude: -58.268103, altitude: 25.0 }
   },
