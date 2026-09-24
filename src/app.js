@@ -321,7 +321,9 @@ class UnajARApp {
             altitude: selected.altitude,
             accuracy: 5
           };
-          this.hudGps.textContent = selected.name.split('(')[0].trim();
+          if (this.hudGps) {
+            this.hudGps.textContent = selected.name.split('(')[0].trim();
+          }
         }
       });
     }
@@ -658,7 +660,9 @@ class UnajARApp {
   advanceUserPosition(meters, bearingDegrees) {
     if (!this.userLocation) return;
     this.userLocation = moveCoordinate(this.userLocation, meters, bearingDegrees);
-    this.hudGps.textContent = `Paseo Virtual (GPS Simulado)`;
+    if (this.hudGps) {
+      this.hudGps.textContent = `Paseo Virtual (GPS Simulado)`;
+    }
     this.showToast(`🚶 Avanzaste ${Math.abs(meters)}m`, 1500);
   }
 
@@ -1171,12 +1175,16 @@ class UnajARApp {
           accuracy: location.accuracy,
           isTemporary: false
         };
-        this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
+        if (this.hudGps) {
+          this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
+        }
       },
       (gpsError) => {
         console.warn('Aviso de geolocalización:', gpsError.message);
         this.showToast(`GPS: ${gpsError.message}. Mostrando mapa base del campus.`, 5000);
-        this.hudGps.textContent = 'Campus UNAJ (Base)';
+        if (this.hudGps) {
+          this.hudGps.textContent = 'Campus UNAJ (Base)';
+        }
       }
     );
 
@@ -1184,6 +1192,14 @@ class UnajARApp {
   }
 
   renderLoop() {
+    // Watchdog de transmisión de video: si el navegador pausa la imagen mientras los sensores siguen activos, reanudar
+    this.videoCheckCounter = (this.videoCheckCounter || 0) + 1;
+    if (this.videoCheckCounter % 30 === 0) {
+      if (this.videoEl && this.videoEl.paused && this.sensorManager && this.sensorManager.stream && this.sensorManager.stream.active) {
+        this.videoEl.play().catch(() => {});
+      }
+    }
+
     this.updateMarkers();
     this.updateNavigationHUD();
     requestAnimationFrame(() => this.renderLoop());

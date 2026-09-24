@@ -11,28 +11,12 @@
 </head>
 <body>
   <div id="app-container">
-    <!-- 1. Video en vivo de la cámara (o fondo simulado si no hay webcam en PC) -->
-    <video id="camera-feed" playsinline autoplay muted></video>
+    <!-- 1. Video en vivo de la cámara (capa base ininterrumpida) -->
+    <video id="camera-feed" playsinline webkit-playsinline autoplay muted disablepictureinpicture disableremoteplayback></video>
     <div id="simulated-background" class="virtual-bg"></div>
 
     <!-- 2. Capa de Carteles Flotantes AR -->
     <div id="markers-container"></div>
-
-    <!-- 3. Telemetría HUD Superior -->
-    <div id="hud-overlay">
-      <div class="hud-pill">
-        <span>RUMBO</span>
-        <span id="hud-heading">0° (N)</span>
-      </div>
-      <div class="hud-pill">
-        <span>NIVEL</span>
-        <span id="hud-floor">PB (0)</span>
-      </div>
-      <div class="hud-pill">
-        <span>UBICACIÓN</span>
-        <span id="hud-gps">Esperando...</span>
-      </div>
-    </div>
 
     <!-- 4. Barra Superior con Buscador de Destino y Filtros -->
     <div id="top-nav-bar">
