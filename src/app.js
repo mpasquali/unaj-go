@@ -247,7 +247,7 @@ class UnajARApp {
       if (this.searchBtnLabel) {
         this.searchBtnLabel.textContent = this.selectedDestination
           ? `Ruta: ${this.selectedDestination.shortName || this.selectedDestination.name}`
-          : '¿A dónde te gustaría ir?';
+          : '¿A dónde vamos?';
       }
     }
   }
@@ -1064,7 +1064,7 @@ class UnajARApp {
     if (this.navArrivalBanner) this.navArrivalBanner.classList.remove('active');
 
     // Restablecer interfaz superior de búsqueda
-    if (this.searchBtnLabel) this.searchBtnLabel.textContent = '¿A dónde te gustaría ir?';
+    if (this.searchBtnLabel) this.searchBtnLabel.textContent = '¿A dónde vamos?';
     if (this.searchBtnBadge) {
       this.searchBtnBadge.textContent = 'Buscar 🔍';
       this.searchBtnBadge.classList.remove('loading');
