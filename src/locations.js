@@ -235,7 +235,7 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#0284c7",
     icon: "🏫",
-    coords: { latitude: -34.774930, longitude: -58.267699, altitude: 25.0 }
+    coords: { latitude: -34.774928, longitude: -58.267729, altitude: 25.0 }
   },
   {
     id: "secretaria-estudiantes",
@@ -284,6 +284,130 @@ export const CAMPUS_LOCATIONS = [
     color: "#f97316",
     icon: "🧬",
     coords: { latitude: -34.774826, longitude: -58.269281, altitude: 25.0 }
+  },
+
+  // ==========================================
+  // PUNTOS DE INTERES ESTUDIANTES
+  // ==========================================
+  {
+    id: "edificio-hudson",
+    name: "Edificio Guillermo Hudson - Aula 41A",
+    shortName: "Hudson - Aula 41A",
+    subtitle: "PB - Laboratorio",
+    description: "Laboratorios específicos de química, biología y ciencias naturales.",
+    category: "aulas",
+    floor: 0,
+    color: "#14b8a6",
+    icon: "📖",
+    coords: { latitude: -34.775814, longitude: -58.2689506, altitude: 25.0 }
+  },
+  {
+    id: "edificio-hudson",
+    name: "Edificio Guillermo Hudson - Aula 41B",
+    shortName: "Hudson - Aula 41B",
+    subtitle: "PB - Laboratorio",
+    description: "Laboratorios específicos de química, biología y ciencias naturales.",
+    category: "aulas",
+    floor: 0,
+    color: "#14b8a6",
+    icon: "📖",
+    coords: { latitude: -34.775814, longitude: -58.2689506, altitude: 25.0 }
+  },
+  {
+    id: "edificio-mosconi-subsuelo",
+    name: "Aulas Mosconi (Subsuelo)",
+    shortName: "Aulas 1 a 7 - SS Mosconi",
+    subtitle: "Subsuelo Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: -1,
+    color: "#64748b",
+    icon: "📖",
+    coords: { latitude: -34.774500, longitude: -58.268250, altitude: 21.5 }
+  },
+  {
+    id: "edificio-mosconi-subsuelo",
+    name: "Aulas Mosconi (PB)",
+    shortName: "Aulas 16,17,52,53,55 - Mosconi PB",
+    subtitle: "Subsuelo Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: -1,
+    color: "#64748b",
+    icon: "📖",
+    coords: { latitude: -34.774500, longitude: -58.268250, altitude: 25.0 }
+  },
+  {
+    id: "edificio-mosconi-p1",
+    name: "Aulas Mosconi (Piso 1)",
+    shortName: "Aulas 120 a 140 - Mosconi P1",
+    subtitle: "Piso 1 - Edificio Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: 1,
+    color: "#0284c7",
+    icon: "📖",
+    coords: { latitude: -34.774850, longitude: -58.267920, altitude: 28.5 }
+  },
+  {
+    id: "edificio-mosconi-p2",
+    name: "Aulas Mosconi (Piso 2)",
+    shortName: "Aulas 205 a 214 - Mosconi P2",
+    subtitle: "Piso 2 - Edificio Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: 1,
+    color: "#0284c7",
+    icon: "📖",
+    coords: { latitude: -34.774850, longitude: -58.267920, altitude: 32.0 }
+  },
+  {
+    id: "edificio-mosconi-p3",
+    name: "Aulas Mosconi (Piso 3)",
+    shortName: "Aulas 305 a 316 - Mosconi P3",
+    subtitle: "Piso 3 - Edificio Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: 1,
+    color: "#0284c7",
+    icon: "📖",
+    coords: { latitude: -34.774850, longitude: -58.267920, altitude: 35.5 }
+  },
+  {
+    id: "edificio-mosconi-p4",
+    name: "Aulas Mosconi (Piso 4)",
+    shortName: "Aulas 407 a 420 - Mosconi P4",
+    subtitle: "Piso 4 - Edificio Mosconi",
+    description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
+    category: "aulas",
+    floor: 1,
+    color: "#0284c7",
+    icon: "📖",
+    coords: { latitude: -34.774850, longitude: -58.267920, altitude: 39.0 }
+  },
+  {
+    id: "edificio-savio",
+    name: "Aulas Savio (PB)",
+    shortName: "Aulas 20 a 27 - Savio PB",
+    subtitle: "PB - Aulas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "📖",
+    coords: { latitude: -34.775100, longitude: -58.267400, altitude: 25.0 }
+  },
+  {
+    id: "edificio-savio",
+    name: "Aulas Savio (Piso 1)",
+    shortName: "Aulas 28 a 36 - Savio P1",
+    subtitle: "P1 - Aulas",
+    description: "Edificio intermediario del campus para cursadas y actividades.",
+    category: "aulas",
+    floor: 0,
+    color: "#f97316",
+    icon: "📖",
+    coords: { latitude: -34.775100, longitude: -58.267400, altitude: 28.5 }
   },
 
 
@@ -378,13 +502,13 @@ export const CAMPUS_LOCATIONS = [
     id: "comedor-padre-mugica",
     name: "Comedor Padre Mugica",
     shortName: "Comedor Universitario",
-    subtitle: "PB - Gastronomía y Estar Estudiantil",
+    subtitle: "SS - Gastronomía y Estar Estudiantil",
     description: "Comedor universitario principal con servicio de almuerzo y cafetería.",
     category: "servicios",
     floor: 0,
     color: "#f4be3f",
     icon: "☕",
-    coords: { latitude: -34.775125, longitude: -58.267976, altitude: 25.0 }
+    coords: { latitude: -34.775125, longitude: -58.267976, altitude: 21.5 }
   },
   {
     id: "biblioteca-central",
