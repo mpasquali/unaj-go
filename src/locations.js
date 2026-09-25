@@ -32,20 +32,20 @@ export const CAMPUS_FLOORS = [
 export const CAMPUS_CHECKPOINTS = [
   {
     id: "hall-central-mosconi",
-    name: "Hall Central Mosconi (Origen 0,0)",
+    name: "Entrada Principal / Hall Central",
     shortName: "Hall Central",
-    subtitle: "PB - Distribuidor Principal",
+    subtitle: "PB - Origen Absoluto (0, 0)",
     floor: 0,
-    x: 0,
-    y: 0,
+    x: 0.0,
+    y: 0.0,
     latitude: -34.774400,
     longitude: -58.268400,
     icon: "🏛️",
-    description: "Distribuidor central de pasillos, aulas y rectorado."
+    description: "Distribuidor central de pasillos, aulas y rectorado. Origen cartesiano (0.0, 0.0)."
   },
   {
     id: "entrada-peatonal-calchaqui",
-    name: "Entrada Principal (Av. Calchaquí)",
+    name: "Entrada Peatonal (Av. Calchaquí)",
     shortName: "Entrada Calchaquí",
     subtitle: "PB - Acceso Peatonal Este",
     floor: 0,
@@ -110,16 +110,42 @@ export const CAMPUS_CHECKPOINTS = [
   },
   {
     id: "ingreso-biblioteca-central",
-    name: "Biblioteca Central (Acceso)",
-    shortName: "Biblioteca",
-    subtitle: "PB - Sala de Lectura y Préstamos",
+    name: "Biblioteca Central UNAJ",
+    shortName: "Biblioteca Central",
+    subtitle: "PB - Sector Suroeste",
     floor: 0,
-    x: -34,
-    y: -185,
-    latitude: -34.776064,
-    longitude: -58.268769,
+    x: -15.5,
+    y: -25.0,
+    latitude: -34.774625,
+    longitude: -58.268570,
     icon: "📚",
-    description: "Ingreso principal al edificio de la biblioteca central universitaria."
+    description: "Biblioteca Central UNAJ, ubicada hacia el sector suroeste del edificio principal."
+  },
+  {
+    id: "consultorios-hospital-el-cruce",
+    name: "Hospital El Cruce (Consultorios)",
+    shortName: "Hospital El Cruce",
+    subtitle: "PB - Ala Oeste/Noroeste",
+    floor: 0,
+    x: -45.0,
+    y: 10.0,
+    latitude: -34.774310,
+    longitude: -58.268893,
+    icon: "🏥",
+    description: "Consultorios externos del Hospital El Cruce (HEC), ubicados en el ala oeste/noroeste del predio."
+  },
+  {
+    id: "cfl-404-florencio-varela",
+    name: "CFL 404 Florencio Varela",
+    shortName: "CFL 404",
+    subtitle: "PB - Sector Sur",
+    floor: 0,
+    x: 10.0,
+    y: -65.0,
+    latitude: -34.774985,
+    longitude: -58.268290,
+    icon: "🛠️",
+    description: "Centro de Formación Laboral N° 404 de Florencio Varela, ubicado en el sector sur del predio."
   },
   {
     id: "mosconi-piso-1-escalera",
@@ -139,9 +165,9 @@ export const CAMPUS_CHECKPOINTS = [
 export const SIMULATION_START_POINTS = {
   plaza_central: {
     id: "plaza_central",
-    name: "Hall Central Mosconi (Origen 0,0)",
-    x: 0,
-    y: 0,
+    name: "Entrada Principal / Hall Central (Origen 0,0)",
+    x: 0.0,
+    y: 0.0,
     altitude: 25.0,
     defaultFloor: 0
   },
@@ -158,6 +184,22 @@ export const SIMULATION_START_POINTS = {
     name: "Patio Buffet El Paso",
     x: -30,
     y: -140,
+    altitude: 25.0,
+    defaultFloor: 0
+  },
+  hospital_el_cruce: {
+    id: "hospital_el_cruce",
+    name: "Hospital El Cruce (Consultorios)",
+    x: -45.0,
+    y: 10.0,
+    altitude: 25.0,
+    defaultFloor: 0
+  },
+  cfl_404: {
+    id: "cfl_404",
+    name: "CFL 404 Florencio Varela",
+    x: 10.0,
+    y: -65.0,
     altitude: 25.0,
     defaultFloor: 0
   }
@@ -223,21 +265,21 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     "id": "edificio-mosconi-hall",
-    "name": "Hall Central Mosconi",
+    "name": "Entrada Principal / Hall Central",
     "shortName": "Hall Central",
-    "subtitle": "PB - Ingreso Principal Interno",
-    "description": "Punto de encuentro y distribuidor principal del campus.",
+    "subtitle": "PB - Origen Absoluto (0, 0)",
+    "description": "Origen cartesiano absoluto del campus (x: 0.0, y: 0.0). Punto de encuentro y distribuidor principal.",
     "category": "acceso",
     "floor": 0,
     "color": "#0284c7",
-    "icon": "🚪",
-    "x": 0,
-    "y": 0,
+    "icon": "🏛️",
+    "x": 0.0,
+    "y": 0.0,
     "coords": {
-      "x": 0,
-      "y": 0,
+      "x": 0.0,
+      "y": 0.0,
       "floor": 0,
-      "altitude": 25
+      "altitude": 25.0
     }
   },
   {
@@ -508,21 +550,21 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     "id": "consultorios-externos",
-    "name": "Consultorios externos HEC",
-    "shortName": "Consultorios externos HEC",
-    "subtitle": "PB - Oficinas",
-    "description": "Edificio intermediario del campus para cursadas y actividades.",
+    "name": "Hospital El Cruce (Consultorios)",
+    "shortName": "Hospital El Cruce",
+    "subtitle": "PB - Ala Oeste/Noroeste",
+    "description": "Consultorios externos del Hospital El Cruce (HEC), ubicados en el ala oeste/noroeste del predio.",
     "category": "servicios",
     "floor": 0,
-    "color": "#f97316",
-    "icon": "🧬",
-    "x": -80,
-    "y": -47,
+    "color": "#0ea5e9",
+    "icon": "🏥",
+    "x": -45.0,
+    "y": 10.0,
     "coords": {
-      "x": -80,
-      "y": -47,
+      "x": -45.0,
+      "y": 10.0,
       "floor": 0,
-      "altitude": 25
+      "altitude": 25.0
     }
   },
   {
@@ -909,19 +951,38 @@ export const CAMPUS_LOCATIONS = [
     "id": "biblioteca-central",
     "name": "Biblioteca Central UNAJ",
     "shortName": "Biblioteca Central",
-    "subtitle": "PB - Biblioteca",
-    "description": "Biblioteca Central",
+    "subtitle": "PB - Sector Suroeste",
+    "description": "Biblioteca Central UNAJ, ubicada hacia el sector suroeste del edificio principal.",
     "category": "servicios",
     "floor": 0,
     "color": "#1cba2e",
-    "icon": "🏫",
-    "x": -34,
-    "y": -185,
+    "icon": "📚",
+    "x": -15.5,
+    "y": -25.0,
     "coords": {
-      "x": -34,
-      "y": -185,
+      "x": -15.5,
+      "y": -25.0,
       "floor": 0,
-      "altitude": 25
+      "altitude": 25.0
+    }
+  },
+  {
+    "id": "cfl-404-florencio-varela",
+    "name": "CFL 404 Florencio Varela",
+    "shortName": "CFL 404",
+    "subtitle": "PB - Sector Sur",
+    "description": "Centro de Formación Laboral N° 404 de Florencio Varela, ubicado en el sector sur del terreno del campus.",
+    "category": "servicios",
+    "floor": 0,
+    "color": "#f59e0b",
+    "icon": "🛠️",
+    "x": 10.0,
+    "y": -65.0,
+    "coords": {
+      "x": 10.0,
+      "y": -65.0,
+      "floor": 0,
+      "altitude": 25.0
     }
   }
 ];
