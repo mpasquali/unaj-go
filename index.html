@@ -23,7 +23,6 @@
       </div>
       <div class="in-app-actions">
         <button id="btn-copy-link" class="btn-inapp-action" type="button" title="Copiar enlace del sitio">📋 Copiar enlace</button>
-        <button id="btn-inapp-switch-map" class="btn-inapp-action highlight" type="button" title="Usar modo mapa 2D sin cámara">🗺️ Usar Modo Mapa 2D</button>
         <button id="btn-close-inapp" class="btn-inapp-close" type="button" aria-label="Cerrar aviso">&times;</button>
       </div>
     </div>
@@ -35,102 +34,14 @@
     <!-- 2. Capa de Carteles Flotantes AR -->
     <div id="markers-container"></div>
 
-    <!-- 3. MODO ALTERNATIVO AUTOMÁTICO: MAPA INTERACTIVO / RADAR 2D (CENITAL) -->
-    <div id="radar-map-view" class="radar-map-view" style="display: none;">
-      <div class="radar-map-header">
-        <div class="radar-title-group">
-          <span class="radar-live-indicator"></span>
-          <span class="radar-map-title">UNAJ • Radar 2D & Plano Cenital</span>
-        </div>
-        <div class="radar-controls-group">
-          <button id="btn-map-zoom-in" class="btn-radar-tool" title="Acercar mapa" aria-label="Acercar mapa">+</button>
-          <button id="btn-map-zoom-out" class="btn-radar-tool" title="Alejar mapa" aria-label="Alejar mapa">−</button>
-          <button id="btn-map-recenter" class="btn-radar-tool" title="Centrar en mi ubicación" aria-label="Centrar en mi ubicación">🎯</button>
-        </div>
-      </div>
-
-      <!-- Lienzo SVG Interactivo del Radar Cenital -->
-      <div id="radar-canvas-container" class="radar-canvas-container">
-        <svg id="radar-svg" class="radar-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <radialGradient id="radarGridGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#0369a1" stop-opacity="0.25" />
-              <stop offset="70%" stop-color="#0f172a" stop-opacity="0.85" />
-              <stop offset="100%" stop-color="#020617" stop-opacity="0.95" />
-            </radialGradient>
-          </defs>
-          <rect width="400" height="400" rx="30" fill="url(#radarGridGrad)" />
-          
-          <!-- Anillos concéntricos de distancia (50m, 100m, 150m, 200m) -->
-          <circle cx="200" cy="200" r="45" class="radar-range-ring ring-1" />
-          <circle cx="200" cy="200" r="90" class="radar-range-ring ring-2" />
-          <circle cx="200" cy="200" r="135" class="radar-range-ring ring-3" />
-          <circle cx="200" cy="200" r="180" class="radar-range-ring ring-4" />
-
-          <!-- Ejes y rumbos cardinales N, S, E, O -->
-          <line x1="200" y1="10" x2="200" y2="390" class="radar-axis-line" />
-          <line x1="10" y1="200" x2="390" y2="200" class="radar-axis-line" />
-          <text x="200" y="24" class="radar-cardinal-label">N</text>
-          <text x="382" y="204" class="radar-cardinal-label">E</text>
-          <text x="200" y="386" class="radar-cardinal-label">S</text>
-          <text x="18" y="204" class="radar-cardinal-label">O</text>
-
-          <!-- Capa dinámica de trazado de ruta activa -->
-          <g id="radar-route-layer"></g>
-
-          <!-- Capa dinámica de edificios y puntos de interés -->
-          <g id="radar-pois-layer"></g>
-
-          <!-- Marcador central de la Posición del Usuario -->
-          <g id="radar-user-marker" transform="translate(200, 200)">
-            <path id="radar-user-cone" d="M 0 0 L -24 -60 A 65 65 0 0 1 24 -60 Z" class="radar-cone-beam" />
-            <circle cx="0" cy="0" r="16" class="radar-user-pulse" />
-            <circle cx="0" cy="0" r="7" class="radar-user-dot" />
-          </g>
-        </svg>
-
-        <div id="radar-scale-badge" class="radar-scale-badge">Radio: 150m</div>
-      </div>
-
-      <!-- Drawer inferior: Tarjeta de ruta activa y lista rápida de edificios -->
-      <div id="radar-bottom-drawer" class="radar-bottom-drawer">
-        <div class="radar-drawer-handle"></div>
-        <div id="radar-active-route-info" class="radar-route-card" style="display: none;">
-          <div class="radar-route-main">
-            <span id="radar-route-icon" class="radar-route-icon">🏛️</span>
-            <div class="radar-route-details">
-              <strong id="radar-route-title">Edificio Mosconi</strong>
-              <span id="radar-route-desc">A 45 m • Nivel PB</span>
-            </div>
-            <button id="btn-cancel-radar-nav" class="btn-cancel-radar" type="button">✕ Salir</button>
-          </div>
-          <div id="radar-route-turn-instruction" class="radar-route-instruction">
-            ➡️ Sigue recto hacia la entrada principal
-          </div>
-        </div>
-
-        <div id="radar-quick-list" class="radar-quick-list">
-          <!-- Tarjetas horizontales generadas dinámicamente -->
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. Barra Superior con Buscador de Destino, Filtros y Toggle Modo Mapa -->
+    <!-- 3. Barra Superior con Buscador de Destino y Filtros -->
     <div id="top-nav-bar">
-      <div class="top-nav-row">
-        <!-- Botón de Búsqueda / Selector de Destino -->
-        <button id="btn-open-destination-picker" class="destination-search-btn" type="button" aria-label="Buscar destino o aula">
-          <span class="search-icon">🎯</span>
-          <span id="search-btn-label">Buscar destino o aula...</span>
-          <span id="search-btn-badge" class="search-badge">Ruta</span>
-        </button>
-
-        <!-- Botón de Alternancia de Vista: Cámara AR vs Mapa 2D -->
-        <button id="btn-toggle-view" class="btn-view-toggle" type="button" aria-label="Cambiar entre modo AR y modo Mapa 2D">
-          <span id="toggle-view-icon" class="toggle-icon">🗺️</span>
-          <span id="toggle-view-text" class="toggle-text">Mapa 2D</span>
-        </button>
-      </div>
+      <!-- Botón de Búsqueda / Selector de Destino -->
+      <button id="btn-open-destination-picker" class="destination-search-btn" type="button" aria-label="Buscar destino o aula">
+        <span class="search-icon">🎯</span>
+        <span id="search-btn-label">Buscar destino o aula...</span>
+        <span id="search-btn-badge" class="search-badge">Ruta</span>
+      </button>
 
       <!-- Filtros Rápidos de Categoría -->
       <div id="category-bar">
@@ -335,25 +246,48 @@
       </div>
     </div>
 
-    <!-- 12. Modal de Permisos y Bienvenida -->
+    <!-- 12. Modal de Permisos y Bienvenida (Onboarding Obligatorio) -->
     <div id="permission-modal">
       <div class="modal-content">
         <div class="modal-logo" title="Universidad Nacional Arturo Jauretche">
-          <img src="./logo.svg" alt="Logotipo Oficial UNAJ" class="modal-logo-img" width="92" height="92" loading="eager" decoding="async">
+          <img src="./logo.svg" alt="Logotipo Oficial UNAJ" class="modal-logo-img" width="96" height="96" loading="eager" decoding="async">
         </div>
         <h1 class="modal-title">UNAJ Go</h1>
         <p class="modal-subtitle">Realidad Aumentada & Navegación</p>
         <p class="modal-description">
-          Encuentra cualquier edificio, aula o laboratorio de la <strong>Universidad Nacional Arturo Jauretche</strong> con guía GPS paso a paso en tiempo real.
+          Para guiarte en vivo por el campus con la cámara y la brújula, necesitamos acceso a tu cámara y ubicación GPS.
         </p>
         <div class="modal-actions">
-          <button id="btn-start" class="btn-primary highlight" type="button" aria-label="Activar en Celular (Cámara y Sensores)">
-            📱 Activar en Celular (Cámara y Sensores)
-          </button>
-          <button id="btn-start-map-mode" class="btn-secondary" type="button" aria-label="Explorar en Modo Mapa 2D sin cámara">
-            🗺️ Explorar en Modo Mapa 2D (Sin Cámara)
+          <button id="btn-start" class="btn-primary highlight btn-cta-large" type="button" aria-label="Activar Cámara y Ubicación">
+            📱 Activar Cámara y Ubicación
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 13. Modal de Permisos Denegados (Bloqueo y Guía de Desbloqueo) -->
+    <div id="permission-denied-modal" class="denied-modal" style="display: none;" role="alertdialog" aria-modal="true">
+      <div class="denied-card">
+        <div class="denied-icon-wrap">
+          <span id="denied-icon" class="denied-icon">📍</span>
+        </div>
+        <h2 id="denied-title" class="denied-title">Permiso de Ubicación Necesario</h2>
+        <p id="denied-message" class="denied-message">
+          Para usar UnajGo necesitamos acceso a tu ubicación. Por favor, habilita los permisos en la configuración de tu navegador (Safari/Chrome).
+        </p>
+        <div class="denied-instructions">
+          <div class="instruction-row">
+            <span class="instruction-badge">iOS (Safari)</span>
+            <p>Toca el ícono <strong>aA</strong> en la barra de direcciones &gt; <em>Configuración del sitio web</em> &gt; <em>Ubicación / Cámara</em> &gt; <strong>Permitir</strong>.</p>
+          </div>
+          <div class="instruction-row">
+            <span class="instruction-badge">Android (Chrome)</span>
+            <p>Toca el ícono del <strong>candado 🔒</strong> en la barra de URL &gt; <em>Permisos</em> &gt; <strong>Permitir</strong> Ubicación y Cámara.</p>
+          </div>
+        </div>
+        <button id="btn-retry-permissions" class="btn-primary highlight btn-cta-large" type="button">
+          🔄 Reintentar Permisos
+        </button>
       </div>
     </div>
   </div>

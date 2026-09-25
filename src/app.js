@@ -138,41 +138,17 @@ class UnajARApp {
     this.detailCategory = document.getElementById('detail-category');
     this.btnStartNavFromDetail = document.getElementById('btn-start-nav-from-detail');
 
-    // Modo de Visualización: 'ar' (Cámara con marcadores) o 'map2d' (Radar Cenital interactivo)
-    this.viewMode = 'ar';
-    this.radarZoom = 1.0; // Factor de zoom (0.6x a 2.5x)
-    this.lastQuickListUpdate = 0;
-
-    // Referencias al DOM - Modo Alternativo Mapa 2D / Radar Cenital
-    this.radarMapView = document.getElementById('radar-map-view');
-    this.radarSvg = document.getElementById('radar-svg');
-    this.radarRouteLayer = document.getElementById('radar-route-layer');
-    this.radarPoisLayer = document.getElementById('radar-pois-layer');
-    this.radarUserCone = document.getElementById('radar-user-cone');
-    this.radarScaleBadge = document.getElementById('radar-scale-badge');
-    this.radarBottomDrawer = document.getElementById('radar-bottom-drawer');
-    this.radarActiveRouteInfo = document.getElementById('radar-active-route-info');
-    this.radarRouteIcon = document.getElementById('radar-route-icon');
-    this.radarRouteTitle = document.getElementById('radar-route-title');
-    this.radarRouteDesc = document.getElementById('radar-route-desc');
-    this.radarRouteTurnInstruction = document.getElementById('radar-route-turn-instruction');
-    this.btnCancelRadarNav = document.getElementById('btn-cancel-radar-nav');
-    this.radarQuickList = document.getElementById('radar-quick-list');
-    this.btnMapZoomIn = document.getElementById('btn-map-zoom-in');
-    this.btnMapZoomOut = document.getElementById('btn-map-zoom-out');
-    this.btnMapRecenter = document.getElementById('btn-map-recenter');
-
-    // Botones de alternancia de vista y acceso directo en bienvenida
-    this.btnToggleView = document.getElementById('btn-toggle-view');
-    this.toggleViewIcon = document.getElementById('toggle-view-icon');
-    this.toggleViewText = document.getElementById('toggle-view-text');
-    this.btnStartMapMode = document.getElementById('btn-start-map-mode');
+    // Modal de Permisos Denegados (Bloqueo y Guía de Desbloqueo)
+    this.deniedModal = document.getElementById('permission-denied-modal');
+    this.deniedIcon = document.getElementById('denied-icon');
+    this.deniedTitle = document.getElementById('denied-title');
+    this.deniedMessage = document.getElementById('denied-message');
+    this.btnRetryPermissions = document.getElementById('btn-retry-permissions');
 
     // Aviso de Navegador Interno Restrictivo (Instagram, Facebook, etc.)
     this.inAppNotice = document.getElementById('in-app-browser-notice');
     this.inAppName = document.getElementById('in-app-name');
     this.btnCopyLink = document.getElementById('btn-copy-link');
-    this.btnInAppSwitchMap = document.getElementById('btn-inapp-switch-map');
     this.btnCloseInApp = document.getElementById('btn-close-inapp');
 
     this.initEvents();
@@ -221,13 +197,14 @@ class UnajARApp {
     if (this.floorElevator) this.floorElevator.style.display = displayVal;
     if (this.radarGuide && active) this.radarGuide.style.display = 'none';
 
-    // Ajustes de compatibilidad de vista según el modo activo
-    if (this.viewMode === 'map2d') {
-      if (this.radarMapView) this.radarMapView.style.display = 'flex';
-      if (this.navHud) this.navHud.style.display = 'none'; // En mapa 2D el drawer inferior maneja la ruta
-    } else {
-      if (this.radarMapView) this.radarMapView.style.display = 'none';
-      if (this.navHud) this.navHud.style.display = active ? 'flex' : 'none';
+    if (this.navHud) {
+      if (active) {
+        this.navHud.classList.add('active');
+        this.navHud.style.display = 'flex';
+      } else {
+        this.navHud.classList.remove('active');
+        this.navHud.style.display = 'none';
+      }
     }
   }
 
@@ -311,60 +288,15 @@ class UnajARApp {
       this.btnStart.addEventListener('touchend', triggerStart, { passive: true });
     }
 
-    // Inicio directo en Modo Mapa 2D desde el modal de bienvenida
-    if (this.btnStartMapMode) {
-      const handleStartMap = (e) => {
+    // Reintento de permisos tras habilitarlos en Safari / Chrome
+    if (this.btnRetryPermissions) {
+      const handleRetry = (e) => {
         if (e) e.stopPropagation();
-        this.startApp('map2d');
+        this.hidePermissionDeniedModal();
+        this.startApp();
       };
-      this.btnStartMapMode.addEventListener('click', handleStartMap);
-      this.btnStartMapMode.addEventListener('touchend', handleStartMap, { passive: true });
-    }
-
-    // Botón de alternancia de vista: Cámara AR vs Mapa 2D
-    if (this.btnToggleView) {
-      const handleToggle = (e) => {
-        if (e) e.stopPropagation();
-        this.toggleViewMode();
-      };
-      this.btnToggleView.addEventListener('click', handleToggle);
-      this.btnToggleView.addEventListener('touchend', handleToggle, { passive: false });
-    }
-
-    // Controles de zoom y centrado en el Radar 2D
-    if (this.btnMapZoomIn) {
-      this.btnMapZoomIn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.radarZoom = Math.min(2.5, this.radarZoom * 1.3);
-        this.updateRadar2D();
-      });
-    }
-
-    if (this.btnMapZoomOut) {
-      this.btnMapZoomOut.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.radarZoom = Math.max(0.5, this.radarZoom / 1.3);
-        this.updateRadar2D();
-      });
-    }
-
-    if (this.btnMapRecenter) {
-      this.btnMapRecenter.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.radarZoom = 1.0;
-        this.updateRadar2D();
-        this.showToast('🎯 Radar centrado en tu posición', 1500);
-      });
-    }
-
-    // Salir de navegación desde el panel del Radar 2D
-    if (this.btnCancelRadarNav) {
-      const handleCancelRadar = (e) => {
-        if (e) e.stopPropagation();
-        this.cancelNavigation();
-      };
-      this.btnCancelRadarNav.addEventListener('click', handleCancelRadar);
-      this.btnCancelRadarNav.addEventListener('touchend', handleCancelRadar, { passive: false });
+      this.btnRetryPermissions.addEventListener('click', handleRetry);
+      this.btnRetryPermissions.addEventListener('touchend', handleRetry, { passive: false });
     }
 
     if (this.btnCloseToast) {
@@ -487,7 +419,7 @@ class UnajARApp {
     const container = document.getElementById('app-container');
     container.addEventListener('pointerdown', (e) => {
       // Bloquear inicio de arrastre AR si se tocó cualquier control superior o interfaz
-      if (e.target.closest('button, select, input, #top-nav-bar, #floor-elevator, #radar-map-view, .destination-search-btn, .search-badge, .filter-btn, .floor-btn, .detail-card, .marker-card, .floor-selector, .status-toast, .destination-modal-sheet, .nav-bottom-card')) return;
+      if (e.target.closest('button, select, input, #top-nav-bar, #floor-elevator, #permission-denied-modal, #permission-modal, .destination-search-btn, .search-badge, .filter-btn, .floor-btn, .detail-card, .marker-card, .floor-selector, .status-toast, .destination-modal-sheet, .nav-bottom-card')) return;
       this.isDragging = true;
       this.lastPointerX = e.clientX;
     });
@@ -1154,16 +1086,8 @@ class UnajARApp {
       });
     }
 
-    // Limpiar estado de ruta en radar 2D
-    if (this.radarActiveRouteInfo) this.radarActiveRouteInfo.style.display = 'none';
-    if (this.radarRouteLayer) this.radarRouteLayer.innerHTML = '';
-
     // Actualizar marcadores inmediatamente para restaurar todos los edificios del campus
-    if (this.viewMode === 'map2d') {
-      this.updateRadar2D();
-    } else {
-      this.updateMarkers();
-    }
+    this.updateMarkers();
 
     this.showToast('Navegación finalizada.', 2500);
   }
@@ -1337,13 +1261,6 @@ class UnajARApp {
         };
       }
 
-      // 2. Botón Usar Modo Mapa 2D directo
-      if (this.btnInAppSwitchMap) {
-        this.btnInAppSwitchMap.onclick = () => {
-          this.inAppNotice.style.display = 'none';
-          this.startApp('map2d');
-        };
-      }
 
       // 3. Botón Cerrar Aviso
       if (this.btnCloseInApp) {
@@ -1355,193 +1272,134 @@ class UnajARApp {
   }
 
   /**
-   * Conmuta entre la vista de Cámara AR y el Modo Mapa 2D / Radar Cenital
+   * Muestra el modal de bloqueo informativo cuando el usuario deniega ubicación o cámara
    */
-  toggleViewMode() {
-    const targetMode = this.viewMode === 'ar' ? 'map2d' : 'ar';
-    this.setViewMode(targetMode);
+  showPermissionDeniedModal(type = 'location', err = null) {
+    if (!this.deniedModal) return;
+
+    if (type === 'location') {
+      if (this.deniedIcon) this.deniedIcon.textContent = '📍';
+      if (this.deniedTitle) this.deniedTitle.textContent = 'Permiso de Ubicación Necesario';
+      if (this.deniedMessage) {
+        this.deniedMessage.textContent = 'Para usar UnajGo necesitamos acceso a tu ubicación. Por favor, habilita los permisos en la configuración de tu navegador (Safari/Chrome).';
+      }
+    } else if (type === 'camera') {
+      if (this.deniedIcon) this.deniedIcon.textContent = '📷';
+      if (this.deniedTitle) this.deniedTitle.textContent = 'Permiso de Cámara Necesario';
+      if (this.deniedMessage) {
+        this.deniedMessage.textContent = 'Para usar la Realidad Aumentada de UnajGo necesitamos acceso a la cámara de tu celular. Por favor, habilita los permisos en la configuración de tu navegador (Safari/Chrome).';
+      }
+    }
+
+    this.deniedModal.style.display = 'flex';
   }
 
   /**
-   * Establece el modo de visualización actual ('ar' o 'map2d')
+   * Oculta el modal de permisos denegados
    */
-  setViewMode(mode) {
-    this.viewMode = mode === 'map2d' ? 'map2d' : 'ar';
-
-    if (this.viewMode === 'map2d') {
-      if (this.radarMapView) this.radarMapView.style.display = 'flex';
-      if (this.videoEl) this.videoEl.style.display = 'none';
-      if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
-      if (this.markersContainer) this.markersContainer.style.display = 'none';
-      if (this.radarGuide) this.radarGuide.style.display = 'none';
-
-      if (this.btnToggleView) this.btnToggleView.classList.add('is-map');
-      if (this.toggleViewIcon) this.toggleViewIcon.textContent = '📷';
-      if (this.toggleViewText) this.toggleViewText.textContent = 'Modo AR';
-
-      // En mapa 2D, ocultar el HUD de flecha AR para no superponerse
-      if (this.navHud) this.navHud.style.display = 'none';
-
-      // Renderizado inmediato del mapa
-      this.updateRadar2D();
-    } else {
-      if (this.radarMapView) this.radarMapView.style.display = 'none';
-      const hasRealStream = Boolean(
-        this.sensorManager && this.sensorManager.stream && this.sensorManager.stream.active
-      );
-      if (this.videoEl) this.videoEl.style.display = hasRealStream ? 'block' : 'none';
-      if (this.simulatedBgEl) this.simulatedBgEl.style.display = hasRealStream ? 'none' : 'block';
-      if (this.markersContainer) this.markersContainer.style.display = 'block';
-
-      if (this.btnToggleView) this.btnToggleView.classList.remove('is-map');
-      if (this.toggleViewIcon) this.toggleViewIcon.textContent = '🗺️';
-      if (this.toggleViewText) this.toggleViewText.textContent = 'Mapa 2D';
-
-      if (this.navHud && this.isNavigating) this.navHud.style.display = 'flex';
-
-      this.updateMarkers();
-    }
-
-    // Mantener la vista limpia si la navegación está activa
-    if (this.isNavigating) {
-      this.setMinimalNavMode(true);
+  hidePermissionDeniedModal() {
+    if (this.deniedModal) {
+      this.deniedModal.style.display = 'none';
     }
   }
 
-  async startApp(forceMode = null) {
-    if (this.isStarting || (this.isStarted && !forceMode)) return;
-
-    // A. MODO MAPA 2D DIRECTO (Sin requerir hardware ni permisos de cámara/sensores)
-    if (forceMode === 'map2d') {
-      if (this.permissionModal) this.permissionModal.style.display = 'none';
-      this.userLocation = {
-        latitude: SIMULATION_START_POINTS.plaza_central.latitude,
-        longitude: SIMULATION_START_POINTS.plaza_central.longitude,
-        altitude: 25.0,
-        accuracy: 25,
-        isTemporary: true
-      };
-      this.setViewMode('map2d');
-      this.isStarted = true;
-      this.isStarting = false;
-      this.showToast('🗺️ Modo Mapa 2D activado. Navegación cenital sin cámara.', 3500);
-
-      // Iniciar geolocalización pasiva de fondo si está disponible
-      try {
-        this.sensorManager.startGeolocation(
-          (loc) => {
-            this.userLocation = {
-              latitude: loc.latitude,
-              longitude: loc.longitude,
-              altitude: loc.altitude || 25.0,
-              accuracy: loc.accuracy,
-              isTemporary: false
-            };
-            if (this.hudGps) this.hudGps.textContent = `±${Math.round(loc.accuracy)}m`;
-            if (this.viewMode === 'map2d') this.updateRadar2D();
-          },
-          () => {}
-        );
-      } catch (e) {}
-
-      if (!this.isRenderLoopRunning) {
-        this.isRenderLoopRunning = true;
-        this.renderLoop();
-      }
-      return;
-    }
-
+  async startApp() {
+    if (this.isStarting || this.isStarted) return;
     this.isStarting = true;
+
+    this.hidePermissionDeniedModal();
 
     if (this.btnStart) {
       this.btnStart.disabled = true;
-      this.btnStart.textContent = 'Iniciando sensores...';
+      this.btnStart.textContent = 'Solicitando permisos...';
     }
 
-    // B. WATCHDOG DE RESILIENCIA TOTAL (3 SEGUNDOS):
-    // Si transcurren más de 3 segundos y el navegador no responde o se queda congelado
-    // solicitando permisos de hardware, activar automáticamente el Modo Mapa 2D de respaldo.
-    let startupCompleted = false;
-    const watchdog3s = setTimeout(() => {
-      if (!startupCompleted) {
-        console.warn('Watchdog 3s activado: El hardware/navegador demoró en responder. Activando Modo Mapa 2D.');
-        startupCompleted = true;
-        if (this.permissionModal) this.permissionModal.style.display = 'none';
-        this.setViewMode('map2d');
-        this.showToast('⏱️ Sensores no respondieron en 3s. Activando Modo Mapa 2D...', 4500);
-        this.showFallbackBanner(
-          'Modo Mapa 2D Activo',
-          'Sensores no disponibles o bloqueados. Puedes navegar mediante el mapa cenital 2D.',
-          true
-        );
-        this.isStarted = true;
-        this.isStarting = false;
-        if (!this.isRenderLoopRunning) {
-          this.isRenderLoopRunning = true;
-          this.renderLoop();
-        }
-      }
-    }, 3000);
-
     try {
-      // 1. Permiso de orientación (iOS 13+ y detección multiplataforma con timeout de seguridad)
+      // 1. Permiso de orientación (iOS 13+ y multiplataforma bajo gesto táctil)
       let orientationPerm = { supported: false, granted: false };
       try {
-        const orientPromise = SensorManager.requestDeviceOrientationPermission();
-        const orientTimeout = new Promise((resolve) => setTimeout(() => resolve({ supported: false, granted: false }), 1500));
-        orientationPerm = await Promise.race([orientPromise, orientTimeout]);
+        orientationPerm = await SensorManager.requestDeviceOrientationPermission();
       } catch (permError) {
         console.warn('Aviso en solicitud de permisos de orientación:', permError);
       }
 
-      // Ocultar modal de bienvenida/permisos
+      // 2. Permiso y activación de cámara física (obligatorio para Realidad Aumentada)
+      let cameraOk = false;
+      try {
+        cameraOk = await this.sensorManager.startCamera(this.videoEl);
+      } catch (camError) {
+        console.warn('Cámara física no permitida o error:', camError);
+        this.isStarting = false;
+        if (this.btnStart) {
+          this.btnStart.disabled = false;
+          this.btnStart.textContent = '📱 Activar Cámara y Ubicación';
+        }
+        this.showPermissionDeniedModal('camera', camError);
+        return;
+      }
+
+      if (!cameraOk) {
+        this.isStarting = false;
+        if (this.btnStart) {
+          this.btnStart.disabled = false;
+          this.btnStart.textContent = '📱 Activar Cámara y Ubicación';
+        }
+        this.showPermissionDeniedModal('camera', new Error('No se pudo acceder a la cámara física del dispositivo.'));
+        return;
+      }
+
+      if (this.videoEl) this.videoEl.style.display = 'block';
+      if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
+      this.hideFallbackBanner();
+
+      // 3. Permiso y obtención de ubicación inicial bajo gesto del usuario
+      try {
+        const initialPos = await this.sensorManager.requestInitialLocation();
+        if (initialPos && initialPos.coords) {
+          this.userLocation = {
+            latitude: initialPos.coords.latitude,
+            longitude: initialPos.coords.longitude,
+            altitude: initialPos.coords.altitude || 25.0,
+            accuracy: initialPos.coords.accuracy,
+            isTemporary: false
+          };
+          if (this.hudGps) {
+            this.hudGps.textContent = `±${Math.round(initialPos.coords.accuracy)}m`;
+          }
+        }
+      } catch (geoErr) {
+        console.warn('Error u obtención inicial de ubicación:', geoErr);
+        if (geoErr && (geoErr.code === 1 || geoErr.code === (geoErr.PERMISSION_DENIED || 1) || /denied/i.test(geoErr.message || ''))) {
+          // Permiso de geolocalización expresamente denegado
+          this.isStarting = false;
+          if (this.btnStart) {
+            this.btnStart.disabled = false;
+            this.btnStart.textContent = '📱 Activar Cámara y Ubicación';
+          }
+          this.showPermissionDeniedModal('location', geoErr);
+          return;
+        }
+
+        // Si fue timeout o precisión temporal, usar ubicación base del campus mientras se busca señal satelital
+        this.userLocation = {
+          latitude: SIMULATION_START_POINTS.plaza_central.latitude,
+          longitude: SIMULATION_START_POINTS.plaza_central.longitude,
+          altitude: 25.0,
+          accuracy: 50,
+          isTemporary: true
+        };
+        if (this.hudGps) {
+          this.hudGps.textContent = 'GPS: Buscando señal...';
+        }
+        this.showToast('Buscando señal GPS de alta precisión...', 3500);
+      }
+
+      // Ocultar modal de onboarding ya que los permisos principales fueron concedidos
       if (this.permissionModal) {
         this.permissionModal.style.display = 'none';
       }
 
-      // Ubicación inicial por defecto (Plaza Central / Campus UNAJ)
-      this.userLocation = {
-        latitude: SIMULATION_START_POINTS.plaza_central.latitude,
-        longitude: SIMULATION_START_POINTS.plaza_central.longitude,
-        altitude: 25.0,
-        accuracy: 50,
-        isTemporary: true
-      };
-      if (this.hudGps) {
-        this.hudGps.textContent = 'GPS: Buscando señal...';
-      }
-
-      // 2. Iniciar transmisión de cámara con control robusto y timeout de 2800ms
-      let cameraOk = false;
-      let cameraErrorMessage = null;
-      try {
-        const cameraPromise = this.sensorManager.startCamera(this.videoEl);
-        const cameraTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT_CAMERA: Tiempo de espera agotado al conectar cámara')), 2800)
-        );
-        cameraOk = await Promise.race([cameraPromise, cameraTimeout]);
-      } catch (camError) {
-        console.warn('Cámara física no disponible, bloqueada o timeout:', camError);
-        cameraOk = false;
-        cameraErrorMessage = this.formatCameraErrorMessage(camError);
-      }
-
-      if (!cameraOk) {
-        // Activar modo de respaldo de video: Visor Virtual
-        if (this.videoEl) this.videoEl.style.display = 'none';
-        if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'block';
-        this.showFallbackBanner(
-          'Modo Visor Virtual Activo',
-          cameraErrorMessage || 'No se pudo acceder a la cámara. Puedes explorar en 360° o tocar "🗺️ Mapa 2D".',
-          true
-        );
-      } else {
-        if (this.videoEl) this.videoEl.style.display = 'block';
-        if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
-        this.hideFallbackBanner();
-      }
-
-      // 3. Iniciar sensores de orientación / brújula
+      // 4. Iniciar sensores de orientación continua / brújula
       if (!orientationPerm.granted) {
         this.activateManualRotationFallback('Orientación manual: Sensores no concedidos. Usa el slider o arrastra la pantalla.');
       } else {
@@ -1552,7 +1410,7 @@ class UnajARApp {
               this.setHeading(orientation.heading);
             },
             (error) => {
-              console.warn('Aviso o timeout en sensores de movimiento:', error);
+              console.warn('Aviso en sensores de orientación:', error);
               this.activateManualRotationFallback('Orientación manual: Sin brújula activa. Arrastra la pantalla para rotar.');
             }
           );
@@ -1562,7 +1420,7 @@ class UnajARApp {
         }
       }
 
-      // 4. Iniciar geolocalización continua
+      // 5. Iniciar geolocalización continua en segundo plano
       try {
         this.sensorManager.startGeolocation(
           (location) => {
@@ -1576,43 +1434,34 @@ class UnajARApp {
             if (this.hudGps) {
               this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
             }
-            if (this.viewMode === 'map2d') {
-              this.updateRadar2D();
-            }
           },
           (gpsError) => {
-            console.warn('Aviso de geolocalización:', gpsError.message || gpsError);
-            this.showToast(`GPS: ${gpsError.message || 'Sin señal'}. Usando mapa base del campus.`, 4000);
-            if (this.hudGps) {
-              this.hudGps.textContent = 'Campus UNAJ (Base)';
+            console.warn('Aviso de geolocalización continua:', gpsError.message || gpsError);
+            if (gpsError && (gpsError.code === 1 || gpsError.code === (gpsError.PERMISSION_DENIED || 1))) {
+              this.showPermissionDeniedModal('location', gpsError);
             }
           }
         );
       } catch (gpsInitErr) {
-        console.warn('Error al iniciar geolocalización:', gpsInitErr);
+        console.warn('Error al iniciar geolocalización continua:', gpsInitErr);
       }
 
-      startupCompleted = true;
-      clearTimeout(watchdog3s);
-
-      // 5. Iniciar SIEMPRE el ciclo de renderizado para garantizar que la pantalla NUNCA se congele
       this.isStarted = true;
       this.isStarting = false;
+
+      // 6. Iniciar ciclo de renderizado AR continuo
       if (!this.isRenderLoopRunning) {
         this.isRenderLoopRunning = true;
         this.renderLoop();
       }
     } catch (unhandledError) {
       console.error('Error no controlado en startApp:', unhandledError);
-      startupCompleted = true;
-      clearTimeout(watchdog3s);
-      this.setViewMode('map2d');
-      this.isStarted = true;
       this.isStarting = false;
-      if (!this.isRenderLoopRunning) {
-        this.isRenderLoopRunning = true;
-        this.renderLoop();
+      if (this.btnStart) {
+        this.btnStart.disabled = false;
+        this.btnStart.textContent = '📱 Activar Cámara y Ubicación';
       }
+      this.showPermissionDeniedModal('location', unhandledError);
     }
   }
 
@@ -1620,243 +1469,19 @@ class UnajARApp {
     try {
       // Watchdog de transmisión de video: si el navegador pausa la imagen mientras el stream sigue activo, reanudar
       this.videoCheckCounter = (this.videoCheckCounter || 0) + 1;
-      if (this.videoCheckCounter % 30 === 0 && this.viewMode === 'ar') {
+      if (this.videoCheckCounter % 30 === 0) {
         if (this.videoEl && this.videoEl.paused && this.sensorManager && this.sensorManager.stream && this.sensorManager.stream.active) {
           this.videoEl.play().catch(() => {});
         }
       }
 
-      if (this.viewMode === 'map2d') {
-        this.updateRadar2D();
-      } else {
-        this.updateMarkers();
-        this.updateNavigationHUD();
-      }
+      this.updateMarkers();
+      this.updateNavigationHUD();
     } catch (loopErr) {
       console.error('Aviso en renderLoop:', loopErr);
     } finally {
       requestAnimationFrame(() => this.renderLoop());
     }
-  }
-
-  // ==========================================
-  // RENDERIZADO Y CONTROL DEL RADAR 2D CENITAL
-  // ==========================================
-
-  updateRadar2D() {
-    if (!this.radarMapView || this.radarMapView.style.display === 'none') return;
-    if (!this.userLocation) return;
-
-    // 1. Orientación del cono de visión del usuario
-    if (this.radarUserCone) {
-      this.radarUserCone.setAttribute('transform', `rotate(${this.userHeading})`);
-    }
-
-    // 2. Actualizar badge de escala
-    const baseRadiusMeters = Math.round(150 / this.radarZoom);
-    if (this.radarScaleBadge) {
-      this.radarScaleBadge.textContent = `Radio: ${baseRadiusMeters}m`;
-    }
-
-    // 3. Renderizar edificios y puntos de interés
-    this.renderRadarPOIs(baseRadiusMeters);
-
-    // 4. Renderizar línea de ruta si hay navegación activa
-    this.renderRadarRoute(baseRadiusMeters);
-
-    // 5. Actualizar Drawer / Información de navegación o lista rápida
-    this.updateRadarBottomDrawer();
-  }
-
-  renderRadarPOIs(baseRadiusMeters) {
-    if (!this.radarPoisLayer || !this.userLocation) return;
-
-    const targetDest = this.activeDestination || this.selectedDestination;
-    const locations = (this.isNavigating && targetDest)
-      ? [targetDest]
-      : getLocationsByFilter(this.activeCategory, this.activeFloor);
-
-    const cx = 200;
-    const cy = 200;
-    const maxSvgRadius = 180;
-    const svgNS = 'http://www.w3.org/2000/svg';
-
-    this.radarPoisLayer.innerHTML = '';
-
-    locations.forEach((poi) => {
-      const dist = calculateDistance(this.userLocation, poi.coords);
-      const bearing = calculateBearing(this.userLocation, poi.coords);
-      const isTarget = Boolean(targetDest && targetDest.id === poi.id);
-
-      // Distancia normalizada en SVG
-      const svgDist = Math.min(maxSvgRadius, (dist / baseRadiusMeters) * maxSvgRadius);
-      const angleRad = (bearing * Math.PI) / 180;
-      const px = cx + svgDist * Math.sin(angleRad);
-      const py = cy - svgDist * Math.cos(angleRad);
-
-      const g = document.createElementNS(svgNS, 'g');
-      g.setAttribute('class', `radar-poi-group ${isTarget ? 'is-target' : ''}`);
-      g.setAttribute('transform', `translate(${px}, ${py})`);
-      g.style.cursor = 'pointer';
-
-      // Círculo del pin
-      const pin = document.createElementNS(svgNS, 'circle');
-      pin.setAttribute('cx', '0');
-      pin.setAttribute('cy', '0');
-      pin.setAttribute('r', isTarget ? '10' : '7');
-      pin.setAttribute('fill', poi.color || '#38bdf8');
-      pin.setAttribute('stroke', isTarget ? '#ffffff' : '#0f172a');
-      pin.setAttribute('stroke-width', isTarget ? '3' : '1.5');
-      pin.setAttribute('class', `radar-poi-pin ${isTarget ? 'is-active-dest' : ''}`);
-
-      // Etiqueta del edificio
-      const text = document.createElementNS(svgNS, 'text');
-      text.setAttribute('x', '0');
-      text.setAttribute('y', '-11');
-      text.setAttribute('class', 'radar-poi-label');
-      text.textContent = poi.shortName || poi.name;
-
-      // Distancia en metros
-      const distText = document.createElementNS(svgNS, 'text');
-      distText.setAttribute('x', '0');
-      distText.setAttribute('y', '15');
-      distText.setAttribute('class', 'radar-poi-dist');
-      distText.textContent = `${Math.round(dist)}m`;
-
-      g.appendChild(pin);
-      g.appendChild(text);
-      g.appendChild(distText);
-
-      // Al tocar el pin en el radar, iniciar ruta directa
-      const handleSelect = (e) => {
-        e.stopPropagation();
-        this.calculateAndStartRoute(poi);
-      };
-      g.onclick = handleSelect;
-      g.addEventListener('click', handleSelect);
-      g.addEventListener('touchend', handleSelect, { passive: false });
-
-      this.radarPoisLayer.appendChild(g);
-    });
-  }
-
-  renderRadarRoute(baseRadiusMeters) {
-    if (!this.radarRouteLayer) return;
-    this.radarRouteLayer.innerHTML = '';
-
-    const target = this.activeDestination || this.selectedDestination;
-    if (!this.isNavigating || !target || !this.userLocation) return;
-
-    const dist = calculateDistance(this.userLocation, target.coords);
-    const bearing = calculateBearing(this.userLocation, target.coords);
-    const cx = 200;
-    const cy = 200;
-    const maxSvgRadius = 180;
-    const svgDist = Math.min(maxSvgRadius, (dist / baseRadiusMeters) * maxSvgRadius);
-    const angleRad = (bearing * Math.PI) / 180;
-    const px = cx + svgDist * Math.sin(angleRad);
-    const py = cy - svgDist * Math.cos(angleRad);
-
-    const svgNS = 'http://www.w3.org/2000/svg';
-
-    // Línea punteada animada
-    const line = document.createElementNS(svgNS, 'line');
-    line.setAttribute('x1', String(cx));
-    line.setAttribute('y1', String(cy));
-    line.setAttribute('x2', String(px));
-    line.setAttribute('y2', String(py));
-    line.setAttribute('class', 'radar-route-line');
-
-    // Halo de destino
-    const halo = document.createElementNS(svgNS, 'circle');
-    halo.setAttribute('cx', String(px));
-    halo.setAttribute('cy', String(py));
-    halo.setAttribute('r', '15');
-    halo.setAttribute('fill', 'none');
-    halo.setAttribute('stroke', '#38bdf8');
-    halo.setAttribute('stroke-width', '2');
-    halo.setAttribute('opacity', '0.6');
-
-    this.radarRouteLayer.appendChild(line);
-    this.radarRouteLayer.appendChild(halo);
-  }
-
-  updateRadarBottomDrawer() {
-    const target = this.activeDestination || this.selectedDestination;
-
-    if (this.isNavigating && target) {
-      // Mostrar tarjeta de navegación activa en el radar
-      if (this.radarActiveRouteInfo) this.radarActiveRouteInfo.style.display = 'block';
-      if (this.radarRouteIcon) this.radarRouteIcon.textContent = target.icon || '🏛️';
-      if (this.radarRouteTitle) this.radarRouteTitle.textContent = target.name;
-
-      const dist = calculateDistance(this.userLocation, target.coords);
-      if (this.radarRouteDesc) {
-        this.radarRouteDesc.textContent = `A ${Math.round(dist)} m • Nivel ${getFloorCode(target.floor)}`;
-      }
-
-      if (this.radarRouteTurnInstruction) {
-        const targetBearing = calculateBearing(this.userLocation, target.coords);
-        const deltaAngle = (targetBearing - this.userHeading + 540) % 360 - 180;
-        if (dist <= 10) {
-          this.radarRouteTurnInstruction.textContent = '🎯 ¡Has llegado al destino!';
-        } else if (Math.abs(deltaAngle) <= 18) {
-          this.radarRouteTurnInstruction.textContent = `⬆️ Sigue derecho hacia ${target.shortName || target.name}`;
-        } else if (deltaAngle > 18) {
-          this.radarRouteTurnInstruction.textContent = `➡️ Gira a la derecha (${Math.round(deltaAngle)}°) hacia ${target.shortName || target.name}`;
-        } else {
-          this.radarRouteTurnInstruction.textContent = `⬅️ Gira a la izquierda (${Math.round(Math.abs(deltaAngle))}°) hacia ${target.shortName || target.name}`;
-        }
-      }
-    } else {
-      if (this.radarActiveRouteInfo) this.radarActiveRouteInfo.style.display = 'none';
-    }
-
-    // Renderizar lista rápida horizontal de POIs (throttle de 1s para rendimiento óptimo)
-    const now = Date.now();
-    if (!this.lastQuickListUpdate || now - this.lastQuickListUpdate > 1000) {
-      this.lastQuickListUpdate = now;
-      this.renderRadarQuickList();
-    }
-  }
-
-  renderRadarQuickList() {
-    if (!this.radarQuickList || !this.userLocation) return;
-
-    const locations = getLocationsByFilter(this.activeCategory, this.activeFloor);
-    const sorted = [...locations].sort((a, b) => {
-      const da = calculateDistance(this.userLocation, a.coords);
-      const db = calculateDistance(this.userLocation, b.coords);
-      return da - db;
-    });
-
-    this.radarQuickList.innerHTML = '';
-
-    sorted.slice(0, 12).forEach((poi) => {
-      const dist = Math.round(calculateDistance(this.userLocation, poi.coords));
-      const isActive = Boolean(this.activeDestination && this.activeDestination.id === poi.id);
-
-      const card = document.createElement('div');
-      card.className = `radar-poi-card ${isActive ? 'active' : ''}`;
-      card.innerHTML = `
-        <div class="radar-poi-card-header">
-          <span style="font-size: 15px;">${poi.icon || '📍'}</span>
-          <span class="radar-poi-card-dist">${dist}m</span>
-        </div>
-        <div class="radar-poi-card-name">${poi.name}</div>
-      `;
-
-      const handleCardClick = (e) => {
-        e.stopPropagation();
-        this.calculateAndStartRoute(poi);
-      };
-
-      card.onclick = handleCardClick;
-      card.addEventListener('click', handleCardClick);
-      card.addEventListener('touchend', handleCardClick, { passive: false });
-
-      this.radarQuickList.appendChild(card);
-    });
   }
 
   formatCameraErrorMessage(err) {

@@ -356,7 +356,7 @@ export const CAMPUS_LOCATIONS = [
     subtitle: "Piso 2 - Edificio Mosconi",
     description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
     category: "aulas",
-    floor: 1,
+    floor: 2,
     color: "#0284c7",
     icon: "📖",
     coords: { latitude: -34.774850, longitude: -58.267920, altitude: 32.0 }
@@ -368,7 +368,7 @@ export const CAMPUS_LOCATIONS = [
     subtitle: "Piso 3 - Edificio Mosconi",
     description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
     category: "aulas",
-    floor: 1,
+    floor: 3,
     color: "#0284c7",
     icon: "📖",
     coords: { latitude: -34.774850, longitude: -58.267920, altitude: 35.5 }
@@ -380,7 +380,7 @@ export const CAMPUS_LOCATIONS = [
     subtitle: "Piso 4 - Edificio Mosconi",
     description: "Cuerpo de aulas teóricas superiores del edificio histórico.",
     category: "aulas",
-    floor: 1,
+    floor: 4,
     color: "#0284c7",
     icon: "📖",
     coords: { latitude: -34.774850, longitude: -58.267920, altitude: 39.0 }
@@ -404,10 +404,34 @@ export const CAMPUS_LOCATIONS = [
     subtitle: "P1 - Aulas",
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "aulas",
-    floor: 0,
+    floor: 1,
     color: "#f97316",
     icon: "📖",
     coords: { latitude: -34.775100, longitude: -58.267400, altitude: 28.5 }
+  },
+  {
+    id: "edificio-abrales",
+    name: "Aulas Abrales PB",
+    shortName: "Aulas 80 a 87 - Abrales PB",
+    subtitle: "PB - Aulas",
+    description: "Laboratorios pesados de ingeniería y ensayos mecánicos/electrónicos.",
+    category: "aulas",
+    floor: 0,
+    color: "#0ea5e9",
+    icon: "📖",
+    coords: { latitude: -34.775800, longitude: -58.267100, altitude: 25.0 }
+  },
+  {
+    id: "edificio-abrales",
+    name: "Aulas Abrales P1",
+    shortName: "Laboratorios - Abrales P1",
+    subtitle: "P1 - Aulas",
+    description: "Laboratorios pesados de ingeniería y ensayos mecánicos/electrónicos.",
+    category: "aulas",
+    floor: 1,
+    color: "#0ea5e9",
+    icon: "📖",
+    coords: { latitude: -34.775800, longitude: -58.267100, altitude: 28.5 }
   },
 
 
@@ -440,7 +464,7 @@ export const CAMPUS_LOCATIONS = [
   },
   {
     id: "edificio-lide",
-    name: "Edificio Ing. Héctor Abraldes",
+    name: "Edificio Ing. Héctor Abrales",
     shortName: "LIDE (Ingeniería)",
     subtitle: "PB - Laboratorios Integrados",
     description: "Laboratorios pesados de ingeniería y ensayos mecánicos/electrónicos.",

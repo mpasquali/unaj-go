@@ -331,6 +331,25 @@ export class SensorManager {
   }
 
   /**
+   * Solicita la posición inicial directamente para evaluar permisos bajo el gesto del usuario
+   */
+  requestInitialLocation() {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) {
+        const notSuppErr = new Error('NOT_SUPPORTED: Geolocalización no soportada en este navegador');
+        notSuppErr.code = 2;
+        reject(notSuppErr);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    });
+  }
+
+  /**
    * Inicia el rastreo continuo del GPS con callbacks de éxito y error
    */
   startGeolocation(onSuccess, onError) {
