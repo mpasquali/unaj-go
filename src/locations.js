@@ -288,6 +288,7 @@ export const CAMPUS_LOCATIONS = [
 
   // ==========================================
   // AULAS
+  // color: #0ea5e9
   // ==========================================
   {
     id: "edificio-hudson",
@@ -446,7 +447,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Edificio intermediario del campus para cursadas y actividades.",
     category: "aulas",
     floor: 0,
-    color: "#f97316",
+    color: "#10b981",
     icon: "🏫",
     coords: { latitude: -34.775100, longitude: -58.267400, altitude: 25.0 }
   },
@@ -470,7 +471,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Laboratorios pesados de ingeniería y ensayos mecánicos/electrónicos.",
     category: "aulas",
     floor: 0,
-    color: "#0ea5e9",
+    color: "#10b981",
     icon: "⚡",
     coords: { latitude: -34.775800, longitude: -58.267100, altitude: 25.0 }
   },
@@ -482,7 +483,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Laboratorios específicos de química, biología y ciencias naturales.",
     category: "aulas",
     floor: 0,
-    color: "#14b8a6",
+    color: "#10b981",
     icon: "🧪",
     coords: { latitude: -34.775814, longitude: -58.2689506, altitude: 25.0 }
   },
@@ -494,7 +495,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Aulas y dependencias de la zona sur del campus.",
     category: "aulas",
     floor: 0,
-    color: "#a855f7",
+    color: "#10b981",
     icon: "🏫",
     coords: { latitude: -34.775406, longitude: -58.269530, altitude: 25.0 }
   },
@@ -518,7 +519,7 @@ export const CAMPUS_LOCATIONS = [
     description: "Laboratorios de bioquímica y oficinas del programa FOCEM.",
     category: "aulas",
     floor: 0,
-    color: "#f43f5e",
+    color: "#10b981",
     icon: "🧬",
     coords: { latitude: -34.776503, longitude: -58.267379, altitude: 25.0 }
   },
