@@ -34,22 +34,13 @@
     <!-- 2. Capa de Carteles Flotantes AR -->
     <div id="markers-container"></div>
 
-    <!-- 3. Barra Superior con Buscador de Destino y Filtros -->
+    <!-- 3. Barra Superior: Selector de Destino Interactivo -->
     <div id="top-nav-bar">
-      <!-- Botón de Búsqueda / Selector de Destino -->
-      <button id="btn-open-destination-picker" class="destination-search-btn" type="button" aria-label="Buscar destino o aula">
-        <span class="search-icon">🎯</span>
-        <span id="search-btn-label">Buscar destino o aula...</span>
-        <span id="search-btn-badge" class="search-badge">Ruta</span>
+      <button id="btn-open-destination-picker" class="destination-search-btn" type="button" aria-label="¿A dónde te gustaría ir?">
+        <span class="search-icon">🔍</span>
+        <span id="search-btn-label">¿A dónde te gustaría ir?</span>
+        <span id="search-btn-badge" class="search-badge">Elegir 🎯</span>
       </button>
-
-      <!-- Filtros Rápidos de Categoría -->
-      <div id="category-bar">
-        <button class="filter-btn active" data-category="todas">Todos</button>
-        <button class="filter-btn" data-category="academica">Aulas</button>
-        <button class="filter-btn" data-category="administrativa">Trámites</button>
-        <button class="filter-btn" data-category="servicios">Servicios</button>
-      </div>
     </div>
 
     <!-- 5. SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4) -->
@@ -148,13 +139,20 @@
         <div class="modal-sheet-header">
           <div class="sheet-handle"></div>
           <div class="modal-sheet-title-bar">
-            <h2>🎯 Selecciona tu Destino</h2>
+            <h2>🎯 ¿A dónde te gustaría ir?</h2>
             <button id="btn-close-dest-picker" class="btn-close">&times;</button>
           </div>
           <!-- Barra de búsqueda rápida -->
           <div class="search-input-wrapper">
             <span class="search-input-icon">🔍</span>
             <input type="text" id="dest-search-input" placeholder="Buscar por aula, edificio u oficina..." autocomplete="off">
+          </div>
+          <!-- Filtros de Categoría integrados en el selector -->
+          <div id="modal-category-bar" class="modal-category-bar">
+            <button class="modal-filter-btn active" data-category="todas">Todos</button>
+            <button class="modal-filter-btn" data-category="academica">Aulas</button>
+            <button class="modal-filter-btn" data-category="administrativa">Trámites</button>
+            <button class="modal-filter-btn" data-category="servicios">Servicios</button>
           </div>
         </div>
 

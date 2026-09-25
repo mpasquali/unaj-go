@@ -110,6 +110,8 @@ class UnajARApp {
     this.btnCloseDestPicker = document.getElementById('btn-close-dest-picker');
     this.destSearchInput = document.getElementById('dest-search-input');
     this.destListContainer = document.getElementById('dest-list-container');
+    this.modalCategoryBar = document.getElementById('modal-category-bar');
+    this.modalFilterButtons = document.querySelectorAll('.modal-filter-btn');
 
     // Controles virtuales PC
     this.virtualControls = document.getElementById('virtual-controls');
@@ -449,13 +451,19 @@ class UnajARApp {
       floorElevator.addEventListener('pointerdown', (e) => e.stopPropagation());
     }
 
-    // 8. Filtros de categoría (Garantía de interactividad y pointer-events)
-    this.filterButtons.forEach((btn) => {
+    // 8. Filtros de categoría en el menú desplegable (Garantía de interactividad y pointer-events)
+    const allCategoryButtons = document.querySelectorAll('.modal-filter-btn, .filter-btn');
+    allCategoryButtons.forEach((btn) => {
       const handleCategory = (e) => {
         e.stopPropagation();
-        this.filterButtons.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.activeCategory = btn.dataset.category;
+        if (e.cancelable && e.type !== 'touchstart') e.preventDefault();
+        const cat = btn.dataset.category || 'todas';
+        this.activeCategory = cat;
+        allCategoryButtons.forEach((b) => {
+          b.classList.toggle('active', (b.dataset.category || 'todas') === cat);
+        });
+        const currentQuery = this.destSearchInput ? this.destSearchInput.value : '';
+        this.renderDestinationList(currentQuery);
       };
       btn.addEventListener('click', handleCategory);
       btn.addEventListener('touchend', handleCategory, { passive: false });
@@ -763,6 +771,12 @@ class UnajARApp {
 
     this.destPickerModal.classList.add('active');
 
+    // Sincronizar estado visual de los botones de categoría
+    const allCategoryButtons = document.querySelectorAll('.modal-filter-btn, .filter-btn');
+    allCategoryButtons.forEach((b) => {
+      b.classList.toggle('active', (b.dataset.category || 'todas') === (this.activeCategory || 'todas'));
+    });
+
     if (this.destSearchInput) {
       this.destSearchInput.value = '';
       try {
@@ -786,6 +800,12 @@ class UnajARApp {
     const cleanQuery = query.toLowerCase().trim();
 
     const filtered = CAMPUS_LOCATIONS.filter((loc) => {
+      // 1. Filtro por categoría seleccionada
+      if (this.activeCategory && this.activeCategory !== 'todas') {
+        if (loc.category !== this.activeCategory) return false;
+      }
+
+      // 2. Filtro por texto
       if (!cleanQuery) return true;
       return (
         loc.name.toLowerCase().includes(cleanQuery) ||
@@ -794,6 +814,15 @@ class UnajARApp {
         getFloorLabel(loc.floor).toLowerCase().includes(cleanQuery)
       );
     });
+
+    // Ordenar por proximidad al usuario si la ubicación está disponible
+    if (this.userLocation) {
+      filtered.sort((a, b) => {
+        const distA = calculateDistance(this.userLocation, a.coords);
+        const distB = calculateDistance(this.userLocation, b.coords);
+        return distA - distB;
+      });
+    }
 
     this.destListContainer.innerHTML = '';
 
@@ -1035,9 +1064,9 @@ class UnajARApp {
     if (this.navArrivalBanner) this.navArrivalBanner.classList.remove('active');
 
     // Restablecer interfaz superior de búsqueda
-    if (this.searchBtnLabel) this.searchBtnLabel.textContent = 'Buscar destino o aula...';
+    if (this.searchBtnLabel) this.searchBtnLabel.textContent = '¿A dónde te gustaría ir?';
     if (this.searchBtnBadge) {
-      this.searchBtnBadge.textContent = 'Ruta';
+      this.searchBtnBadge.textContent = 'Elegir 🎯';
       this.searchBtnBadge.classList.remove('loading');
     }
 
@@ -1559,77 +1588,77 @@ class UnajARApp {
   updateMarkers() {
     if (!this.userLocation) return;
 
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-
-    // Modo minimalista: cuando la navegación esté activa, filtrar para mostrar
-    // EXCLUSIVAMENTE el destino actual (ocultando cualquier otro edificio/pin lejano del mapa)
-    const targetDest = this.activeDestination || this.selectedDestination;
-    const locations = (this.isNavigating && targetDest)
-      ? [targetDest]
-      : getLocationsByFilter(this.activeCategory, this.activeFloor);
-
     if (!this.markerElements) {
       this.markerElements = new Map();
     }
 
-    let anyVisible = false;
-    let closestBuilding = null;
-    let minDistance = Infinity;
+    const targetDest = this.activeDestination || this.selectedDestination;
+
+    // 1. MODO LIMPIO POR DEFECTO:
+    // Si no hay un destino seleccionado o la navegación no está activa, NO proyectar ningún cartel flotante.
+    // La pantalla de la cámara se mantiene 100% limpia y despejada.
+    if (!targetDest || !this.isNavigating) {
+      if (this.markerElements.size > 0) {
+        this.markerElements.forEach((marker) => marker.remove());
+        this.markerElements.clear();
+      }
+      if (this.markersContainer) {
+        this.markersContainer.innerHTML = '';
+      }
+      if (this.radarGuide) {
+        this.radarGuide.style.display = 'none';
+      }
+      return;
+    }
+
+    // 2. RENDERIZADO EXCLUSIVO DE UN SOLO DESTINO ACTIVO:
+    // Proyectar únicamente el destino seleccionado en Realidad Aumentada
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const building = targetDest;
+
+    const distance = calculateDistance(this.userLocation, building.coords);
+    const bearing = calculateBearing(this.userLocation, building.coords);
+
+    const targetAltitude = building.coords.altitude || getFloorAltitude(building.floor);
+    const currentAltitude = this.userAltitude || 25.0;
+    const verticalAltitudeDiff = targetAltitude - currentAltitude;
+
+    const projection = projectToScreen(
+      bearing,
+      this.userHeading,
+      distance,
+      screenWidth,
+      screenHeight,
+      65,
+      verticalAltitudeDiff
+    );
+
     const visibleIds = new Set();
 
-    locations.forEach((building) => {
-      const distance = calculateDistance(this.userLocation, building.coords);
-      const bearing = calculateBearing(this.userLocation, building.coords);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestBuilding = building;
+    if (projection.isVisible) {
+      visibleIds.add(building.id);
+      this.renderMarkerElement(building, distance, projection.x, projection.y, true);
+      if (this.radarGuide) {
+        this.radarGuide.style.display = 'none';
       }
-
-      const targetAltitude = building.coords.altitude || getFloorAltitude(building.floor);
-      const currentAltitude = this.userAltitude || 25.0;
-      const verticalAltitudeDiff = targetAltitude - currentAltitude;
-
-      const projection = projectToScreen(
-        bearing,
-        this.userHeading,
-        distance,
-        screenWidth,
-        screenHeight,
-        65,
-        verticalAltitudeDiff
-      );
-
-      if (projection.isVisible) {
-        anyVisible = true;
-        visibleIds.add(building.id);
-        const isNavTarget = Boolean(this.activeDestination && this.activeDestination.id === building.id);
-        this.renderMarkerElement(building, distance, projection.x, projection.y, isNavTarget);
+    } else {
+      // Si el destino seleccionado está fuera del campo de visión (detrás o a los lados),
+      // mostrar una flecha guía indicando hacia dónde girar la cámara
+      if (this.radarGuide) {
+        const deltaAngle = (bearing - this.userHeading + 540) % 360 - 180;
+        const arrow = deltaAngle > 0 ? '👉 Gira a la derecha' : '👈 Gira a la izquierda';
+        this.radarGuide.textContent = `${arrow} (${Math.round(Math.abs(deltaAngle))}°) para ver ${building.shortName || building.name}`;
+        this.radarGuide.style.display = 'block';
       }
-    });
+    }
 
-    // Eliminar del DOM marcadores que ya no están visibles o que salieron del filtro
+    // Eliminar del DOM marcadores antiguos o que ya no sean visibles
     for (const [id, marker] of this.markerElements.entries()) {
       if (!visibleIds.has(id)) {
         marker.remove();
         this.markerElements.delete(id);
       }
-    }
-
-    // Solo mostrar radar guide si no hay navegación activa
-    if (!this.activeDestination && !this.isNavigating) {
-      if (!anyVisible && closestBuilding) {
-        const bearing = calculateBearing(this.userLocation, closestBuilding.coords);
-        const deltaAngle = (bearing - this.userHeading + 540) % 360 - 180;
-        const arrow = deltaAngle > 0 ? '👉 Gira a la derecha' : '👈 Gira a la izquierda';
-        this.radarGuide.textContent = `${arrow} para ver ${closestBuilding.name}`;
-        this.radarGuide.style.display = 'block';
-      } else {
-        this.radarGuide.style.display = 'none';
-      }
-    } else {
-      this.radarGuide.style.display = 'none';
     }
   }
 
