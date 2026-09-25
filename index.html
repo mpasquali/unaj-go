@@ -34,12 +34,21 @@
     <!-- 2. Capa de Carteles Flotantes AR -->
     <div id="markers-container"></div>
 
-    <!-- 3. Barra Superior: Selector de Destino Interactivo -->
-    <div id="top-nav-bar">
-      <button id="btn-open-destination-picker" class="destination-search-btn" type="button" aria-label="¿A dónde te gustaría ir?">
-        <span class="search-icon">🔍</span>
-        <span id="search-btn-label">¿A dónde te gustaría ir?</span>
-        <span id="search-btn-badge" class="search-badge">Elegir 🎯</span>
+    <!-- 3. Barra Superior: Tarjeta Flotante de Búsqueda (Glassmorphism) -->
+    <div id="top-nav-bar" class="top-floating-wrapper">
+      <button id="btn-open-destination-picker" class="destination-floating-card" type="button" aria-label="¿A dónde te gustaría ir?">
+        <div class="card-icon-bubble">
+          <span class="card-pin-icon">📍</span>
+        </div>
+        <div class="card-text-content">
+          <div class="card-headline">
+            <span id="search-btn-label" class="card-title">¿A dónde te gustaría ir?</span>
+          </div>
+          <span class="card-sub-hint">Toca para buscar aulas, oficinas o edificios</span>
+        </div>
+        <div class="card-action-box">
+          <span id="search-btn-badge" class="search-badge-btn">Buscar 🔍</span>
+        </div>
       </button>
     </div>
 

@@ -241,13 +241,13 @@ class UnajARApp {
       }, 2500);
     } else {
       if (this.searchBtnBadge) {
-        this.searchBtnBadge.textContent = 'Ruta';
+        this.searchBtnBadge.textContent = 'Buscar 🔍';
         this.searchBtnBadge.classList.remove('loading');
       }
       if (this.searchBtnLabel) {
         this.searchBtnLabel.textContent = this.selectedDestination
           ? `Ruta: ${this.selectedDestination.shortName || this.selectedDestination.name}`
-          : 'Buscar destino o aula...';
+          : '¿A dónde te gustaría ir?';
       }
     }
   }
@@ -1066,7 +1066,7 @@ class UnajARApp {
     // Restablecer interfaz superior de búsqueda
     if (this.searchBtnLabel) this.searchBtnLabel.textContent = '¿A dónde te gustaría ir?';
     if (this.searchBtnBadge) {
-      this.searchBtnBadge.textContent = 'Elegir 🎯';
+      this.searchBtnBadge.textContent = 'Buscar 🔍';
       this.searchBtnBadge.classList.remove('loading');
     }
 

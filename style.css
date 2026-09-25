@@ -224,19 +224,18 @@ body, html {
 
 
 /* ======================================================== */
-/* BARRA SUPERIOR: BUSCADOR DE DESTINO + FILTROS DE PISO    */
-/* Capa con pointer-events garantizados para evitar bloqueo */
+/* BARRA SUPERIOR: TARJETA FLOTANTE (GLASSMORPHISM CARD)    */
 /* ======================================================== */
-#top-nav-bar {
+#top-nav-bar,
+.top-floating-wrapper {
   position: absolute;
-  top: max(18px, env(safe-area-inset-top, 18px) + 8px);
+  top: max(20px, env(safe-area-inset-top, 20px) + 12px);
   left: 16px;
   right: 16px;
-  max-width: 480px;
+  max-width: 520px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   z-index: 70 !important; /* Muy por encima del canvas de la cámara y marcadores AR */
   pointer-events: auto !important;
   touch-action: manipulation !important;
@@ -249,80 +248,145 @@ body, html {
 }
 
 #btn-open-destination-picker,
-.destination-search-btn {
+.destination-floating-card {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
   width: 100%;
   min-width: 0;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  padding: 8px 14px;
-  border-radius: 9999px;
-  color: #f1f5f9;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 13px 18px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  border-radius: 22px;
+  box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.75),
+              0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   cursor: pointer !important;
   pointer-events: auto !important;
   touch-action: manipulation !important;
-  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.25);
+  -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  transition: all 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease,
+              background 0.2s ease;
   position: relative;
   z-index: 71 !important;
 }
 
-.destination-search-btn:hover {
-  background: rgba(30, 41, 59, 0.95);
+.destination-floating-card:hover {
+  background: rgba(30, 41, 59, 0.94);
   border-color: #38bdf8;
-  transform: translateY(-1px);
+  box-shadow: 0 20px 45px -4px rgba(0, 0, 0, 0.85),
+              0 0 18px rgba(56, 189, 248, 0.3);
+  transform: translateY(-2px);
 }
 
-.destination-search-btn:active {
-  transform: scale(0.98);
-  background: rgba(30, 41, 59, 0.98);
+.destination-floating-card:active {
+  transform: scale(0.985);
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.7);
 }
 
-.search-icon {
-  font-size: 14px;
+/* Burbuja del ícono en la tarjeta */
+.card-icon-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.9), rgba(14, 165, 233, 0.45));
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.38);
   pointer-events: none !important;
 }
 
-#search-btn-label {
+.card-pin-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  pointer-events: none !important;
+}
+
+/* Grupo de texto central */
+.card-text-content {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-width: 0;
   text-align: left;
+  gap: 2px;
+  pointer-events: none !important;
+}
+
+.card-headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none !important;
+}
+
+#search-btn-label,
+.card-title {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none !important;
+}
+
+.card-sub-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none !important;
 }
 
+/* Badge de acción derecho */
+.card-action-box {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 #search-btn-badge,
-.search-badge {
-  background: #0284c7;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  transition: background-color 0.2s ease;
+.search-badge-btn {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   cursor: pointer !important;
   pointer-events: auto !important;
   touch-action: manipulation !important;
-  position: relative;
-  z-index: 72 !important;
 }
 
-.search-badge:active {
-  transform: scale(0.94);
+.search-badge-btn:hover {
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.55);
 }
 
-.search-badge.loading {
+.search-badge-btn:active {
+  transform: scale(0.95);
+}
+
+.search-badge-btn.loading {
   background: #f59e0b !important;
   animation: pulse 1s infinite;
 }
@@ -747,16 +811,16 @@ body.is-navigating .fallback-banner {
 
 .destination-modal-sheet {
   background: #0f172a;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: 26px 26px 0 0;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 28px 28px 0 0;
   width: 100%;
-  max-width: 540px;
-  max-height: 85vh;
-  max-height: 85dvh;
+  max-width: 580px;
+  max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.25s ease-out;
-  box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.95);
   pointer-events: auto !important;
   touch-action: pan-y;
   position: relative;
@@ -764,7 +828,7 @@ body.is-navigating .fallback-banner {
 }
 
 .modal-sheet-header {
-  padding: 16px 20px 12px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -786,7 +850,7 @@ body.is-navigating .fallback-banner {
 }
 
 .modal-sheet-title-bar h2 {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   color: #fff;
 }
@@ -794,15 +858,16 @@ body.is-navigating .fallback-banner {
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 8px 14px;
-  border-radius: 12px;
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+  padding: 10px 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) inset;
 }
 
 .search-input-icon {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 #dest-search-input {
@@ -811,7 +876,7 @@ body.is-navigating .fallback-banner {
   border: none;
   outline: none;
   color: #fff;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 500;
 }
 
