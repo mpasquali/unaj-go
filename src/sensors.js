@@ -66,14 +66,35 @@ export class SensorManager {
   async startCamera(videoElement) {
     this.videoElement = videoElement;
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('La API de cámara (getUserMedia) no está disponible en este navegador o requiere HTTPS.');
+    // 1. Verificación de contexto seguro (requerido por navegadores modernos en móviles)
+    const isLocalhost = Boolean(
+      typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '[::1]'
+      )
+    );
+    const isSecure = (typeof window !== 'undefined' && window.isSecureContext) || 
+                     (typeof window !== 'undefined' && window.location.protocol === 'https:') || 
+                     isLocalhost;
+
+    if (!isSecure && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
+      const secErr = new Error('INSECURE_CONTEXT: El navegador requiere HTTPS para acceder a la cámara en el celular.');
+      secErr.name = 'SecurityError';
+      throw secErr;
     }
 
-    // Configuración exhaustiva de propiedades para evitar pausas automáticas en iOS WebKit y Android Chrome
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const notSuppErr = new Error('NOT_SUPPORTED: Este navegador no cuenta con soporte para captura de video (getUserMedia).');
+      notSuppErr.name = 'NotSupportedError';
+      throw notSuppErr;
+    }
+
+    // 2. Configuración exhaustiva de propiedades y atributos para Safari iOS, Chrome, Firefox y Samsung Internet
     this.videoElement.muted = true;
     this.videoElement.defaultMuted = true;
     this.videoElement.playsInline = true;
+    this.videoElement.autoplay = true;
     this.videoElement.setAttribute('autoplay', '');
     this.videoElement.setAttribute('muted', '');
     this.videoElement.setAttribute('playsinline', '');
@@ -296,11 +317,17 @@ export class SensorManager {
 
     // Suscripción con compatibilidad para Android Chrome y navegadores estándar
     // deviceorientationabsolute es preferido en Android si está disponible
-    if ('ondeviceorientationabsolute' in window) {
-      window.addEventListener('deviceorientationabsolute', this.orientationHandler, true);
+    try {
+      if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', this.orientationHandler, true);
+      }
+      window.addEventListener('deviceorientation', this.orientationHandler, true);
+    } catch (listenerErr) {
+      console.warn('Error al suscribir listeners de movimiento:', listenerErr);
+      if (this.onOrientationError) {
+        this.onOrientationError(listenerErr);
+      }
     }
-    // También escuchamos deviceorientation estándar como respaldo
-    window.addEventListener('deviceorientation', this.orientationHandler, true);
   }
 
   /**
@@ -323,25 +350,32 @@ export class SensorManager {
       timeout: 10000
     };
 
-    this.watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        if (this.onLocationUpdate) {
-          this.onLocationUpdate({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            altitude: position.coords.altitude || 25.0
-          });
-        }
-      },
-      (error) => {
-        console.warn('Aviso de geolocalización:', error.message);
-        if (this.onLocationError) {
-          this.onLocationError(error);
-        }
-      },
-      options
-    );
+    try {
+      this.watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          if (this.onLocationUpdate) {
+            this.onLocationUpdate({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              altitude: position.coords.altitude || 25.0
+            });
+          }
+        },
+        (error) => {
+          console.warn('Aviso de geolocalización:', error.message);
+          if (this.onLocationError) {
+            this.onLocationError(error);
+          }
+        },
+        options
+      );
+    } catch (geoErr) {
+      console.warn('Error al iniciar watchPosition:', geoErr);
+      if (this.onLocationError) {
+        this.onLocationError(geoErr);
+      }
+    }
   }
 
   /**

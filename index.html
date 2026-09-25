@@ -54,7 +54,22 @@
       <button id="btn-close-toast" class="btn-close-toast">&times;</button>
     </div>
 
-    <!-- 7. Guía Radar Direccional cuando ningún edificio está a la vista (Modo Libre) -->
+    <!-- 7. Banner Visual de Respaldo Multiplataforma (Cámara / Sensores) -->
+    <div id="fallback-banner" class="fallback-banner" role="alert" aria-live="polite">
+      <div class="fallback-banner-content">
+        <span id="fallback-banner-icon" class="fallback-banner-icon">🌐</span>
+        <div class="fallback-banner-text">
+          <strong id="fallback-banner-title">Modo Visor Virtual Activo</strong>
+          <span id="fallback-banner-desc">Cámara no disponible. Explora en 360° arrastrando la pantalla.</span>
+        </div>
+      </div>
+      <div class="fallback-banner-actions">
+        <button id="btn-retry-camera" class="btn-banner-retry" type="button" aria-label="Reintentar activar cámara">📷 Reintentar</button>
+        <button id="btn-close-fallback-banner" class="btn-banner-close" type="button" aria-label="Cerrar aviso">&times;</button>
+      </div>
+    </div>
+
+    <!-- 8. Guía Radar Direccional cuando ningún edificio está a la vista (Modo Libre) -->
     <div id="radar-guide">👈 Gira para ver los edificios</div>
 
     <!-- ======================================================== -->

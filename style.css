@@ -48,16 +48,31 @@ body, html {
   will-change: transform;
 }
 
-/* Fondo virtual alternativo para PC cuando no hay webcam */
+/* Fondo virtual alternativo para PC cuando no hay webcam o se deniegan permisos */
 .virtual-bg {
   display: none;
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(ellipse at 50% 60%, rgba(2, 132, 199, 0.15) 0%, transparent 70%),
-    linear-gradient(180deg, #090d16 0%, #0f172a 50%, #020617 100%);
+    radial-gradient(circle at 50% 48%, rgba(2, 132, 199, 0.22) 0%, transparent 65%),
+    linear-gradient(180deg, #060a14 0%, #0d1527 50%, #020617 100%);
   z-index: 0;
   pointer-events: none !important;
+}
+
+.virtual-bg::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: 
+    linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
 }
 
 .virtual-bg::after {
@@ -66,8 +81,9 @@ body, html {
   top: 50%;
   left: 0;
   right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.3), transparent);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
 }
 
 /* Contenedor de Marcadores Flotantes AR */
@@ -445,7 +461,11 @@ body.is-navigating #floor-elevator,
 #app-container.is-navigating .floor-selector,
 body.is-navigating .floor-selector,
 #app-container.is-navigating #radar-guide,
-body.is-navigating #radar-guide {
+body.is-navigating #radar-guide,
+#app-container.is-navigating .virtual-controls-panel,
+body.is-navigating .virtual-controls-panel,
+#app-container.is-navigating .fallback-banner,
+body.is-navigating .fallback-banner {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
@@ -1043,6 +1063,121 @@ body.is-navigating #radar-guide {
   padding: 0 4px;
   line-height: 1;
   flex-shrink: 0;
+}
+
+/* ======================================================== */
+/* BANNER VISUAL DE RESPALDO MULTIPLATAFORMA (FALLBACK UI) */
+/* Se muestra cuando se deniegan permisos o no hay cámara    */
+/* ======================================================== */
+.fallback-banner {
+  display: none !important;
+  position: absolute;
+  top: 135px;
+  left: 14px;
+  right: 14px;
+  max-width: 480px;
+  margin: 0 auto;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 20px rgba(2, 132, 199, 0.25);
+  border-radius: 16px;
+  padding: 10px 14px;
+  z-index: 60;
+  pointer-events: auto !important;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fallback-banner.visible {
+  display: flex !important;
+  opacity: 1;
+  transform: translateY(0);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fallback-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fallback-banner-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.fallback-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fallback-banner-text strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fallback-banner-text span {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.3;
+}
+
+.fallback-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-banner-retry {
+  background: #0284c7;
+  color: #fff;
+  border: 1px solid #38bdf8;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-banner-retry:hover,
+.btn-banner-retry:active {
+  background: #0369a1;
+  transform: scale(0.96);
+}
+
+.btn-banner-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer !important;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.btn-banner-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Guía radar direccional */

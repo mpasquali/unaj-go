@@ -52,6 +52,33 @@ class UnajARApp {
     this.toastMessageEl = document.getElementById('toast-message');
     this.btnCloseToast = document.getElementById('btn-close-toast');
 
+    // Banner de Respaldo / Notificación de Sensores
+    this.fallbackBanner = document.getElementById('fallback-banner');
+    this.fallbackBannerTitle = document.getElementById('fallback-banner-title');
+    this.fallbackBannerDesc = document.getElementById('fallback-banner-desc');
+    this.fallbackBannerIcon = document.getElementById('fallback-banner-icon');
+    this.btnRetryCamera = document.getElementById('btn-retry-camera');
+    this.btnCloseFallbackBanner = document.getElementById('btn-close-fallback-banner');
+
+    // Inicialización preventiva de atributos para Safari iOS, Chrome y Firefox
+    if (this.videoEl) {
+      this.videoEl.setAttribute('playsinline', '');
+      this.videoEl.setAttribute('webkit-playsinline', '');
+      this.videoEl.setAttribute('autoplay', '');
+      this.videoEl.setAttribute('muted', '');
+      this.videoEl.setAttribute('disablepictureinpicture', '');
+      this.videoEl.setAttribute('disableremoteplayback', '');
+      this.videoEl.playsInline = true;
+      this.videoEl.muted = true;
+      this.videoEl.defaultMuted = true;
+      this.videoEl.autoplay = true;
+    }
+
+    // Banderas de estado
+    this.isStarting = false;
+    this.isStarted = false;
+    this.isRenderLoopRunning = false;
+
     // HUD y Telemetría
     this.hudOverlay = document.getElementById('hud-overlay');
     this.hudHeading = document.getElementById('hud-heading');
@@ -223,17 +250,42 @@ class UnajARApp {
 
   initEvents() {
     // 1. Inicio de la aplicación (Cámara y Sensores)
+    let startHandled = false;
+    const triggerStart = (e) => {
+      if (e) e.stopPropagation();
+      if (startHandled) return;
+      startHandled = true;
+      this.startApp();
+      setTimeout(() => { startHandled = false; }, 1000);
+    };
+
     if (this.btnStart) {
-      this.btnStart.addEventListener('click', () => this.startApp());
-      this.btnStart.addEventListener('touchend', (e) => {
-        e.stopPropagation();
-        if (e.cancelable) e.preventDefault();
-        this.startApp();
-      });
+      this.btnStart.addEventListener('click', triggerStart);
+      this.btnStart.addEventListener('touchend', triggerStart, { passive: true });
     }
 
     if (this.btnCloseToast) {
       this.btnCloseToast.addEventListener('click', () => this.hideToast());
+      this.btnCloseToast.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        this.hideToast();
+      }, { passive: true });
+    }
+
+    if (this.btnRetryCamera) {
+      this.btnRetryCamera.addEventListener('click', () => this.retryCamera());
+      this.btnRetryCamera.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        this.retryCamera();
+      }, { passive: true });
+    }
+
+    if (this.btnCloseFallbackBanner) {
+      this.btnCloseFallbackBanner.addEventListener('click', () => this.hideFallbackBanner());
+      this.btnCloseFallbackBanner.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        this.hideFallbackBanner();
+      }, { passive: true });
     }
 
     // 2. Selector de piso lateral (Elevador de niveles -1 a 4)
@@ -1114,17 +1166,28 @@ class UnajARApp {
   }
 
   async startApp() {
+    if (this.isStarting || this.isStarted) return;
+    this.isStarting = true;
+
     if (this.btnStart) {
       this.btnStart.disabled = true;
-      this.btnStart.textContent = 'Solicitando acceso...';
+      this.btnStart.textContent = 'Iniciando sensores...';
     }
 
-    const orientationPerm = await SensorManager.requestDeviceOrientationPermission();
+    // 1. Permiso de orientación (iOS 13+ y detección multiplataforma)
+    let orientationPerm = { supported: false, granted: false };
+    try {
+      orientationPerm = await SensorManager.requestDeviceOrientationPermission();
+    } catch (permError) {
+      console.warn('Aviso en solicitud de permisos de orientación:', permError);
+    }
 
+    // Ocultar modal de bienvenida/permisos
     if (this.permissionModal) {
       this.permissionModal.style.display = 'none';
     }
 
+    // Ubicación inicial por defecto (Plaza Central / Campus UNAJ)
     this.userLocation = {
       latitude: SIMULATION_START_POINTS.plaza_central.latitude,
       longitude: SIMULATION_START_POINTS.plaza_central.longitude,
@@ -1136,73 +1199,178 @@ class UnajARApp {
       this.hudGps.textContent = 'GPS: Buscando señal...';
     }
 
+    // 2. Iniciar transmisión de cámara con control robusto de errores (getUserMedia)
+    let cameraOk = false;
+    let cameraErrorMessage = null;
     try {
-      await this.sensorManager.startCamera(this.videoEl);
+      cameraOk = await this.sensorManager.startCamera(this.videoEl);
     } catch (camError) {
-      console.warn('Cámara física no disponible:', camError);
-      this.videoEl.style.display = 'none';
-      this.simulatedBgEl.style.display = 'block';
-      this.showToast('⚠️ No se pudo acceder a la cámara. Usando visor virtual.', 5000);
+      console.warn('Cámara física no disponible o denegada:', camError);
+      cameraOk = false;
+      cameraErrorMessage = this.formatCameraErrorMessage(camError);
     }
 
-    if (!orientationPerm.granted) {
-      this.isCompassWorking = false;
-      this.showToast('⚠️ Permiso de sensores denegado o no disponible. Controles en pantalla activados.', 6000);
-      this.virtualControls.classList.add('visible');
-      this.setHeading(0);
+    if (!cameraOk) {
+      // Activar modo de respaldo de video: Visor Virtual
+      if (this.videoEl) this.videoEl.style.display = 'none';
+      if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'block';
+      this.showFallbackBanner(
+        'Modo Visor Virtual Activo',
+        cameraErrorMessage || 'No se pudo acceder a la cámara. Explora en 360° arrastrando la pantalla.',
+        true
+      );
     } else {
-      this.sensorManager.startOrientation(
-        (orientation) => {
-          this.isCompassWorking = true;
-          this.setHeading(orientation.heading);
+      if (this.videoEl) this.videoEl.style.display = 'block';
+      if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
+      this.hideFallbackBanner();
+    }
+
+    // 3. Iniciar sensores de orientación / brújula
+    if (!orientationPerm.granted) {
+      this.activateManualRotationFallback('Orientación manual: Sensores no concedidos o no soportados. Usa el slider o arrastra la pantalla.');
+    } else {
+      try {
+        this.sensorManager.startOrientation(
+          (orientation) => {
+            this.isCompassWorking = true;
+            this.setHeading(orientation.heading);
+          },
+          (error) => {
+            console.warn('Aviso o timeout en sensores de movimiento:', error);
+            this.activateManualRotationFallback('Orientación manual: No se detectó brújula activa. Puedes rotar arrastrando la pantalla.');
+          }
+        );
+      } catch (orientErr) {
+        console.warn('Error al iniciar orientación:', orientErr);
+        this.activateManualRotationFallback('Orientación manual activada. Arrastra la pantalla para rotar.');
+      }
+    }
+
+    // 4. Iniciar geolocalización continua
+    try {
+      this.sensorManager.startGeolocation(
+        (location) => {
+          this.userLocation = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            altitude: location.altitude || 25.0,
+            accuracy: location.accuracy,
+            isTemporary: false
+          };
+          if (this.hudGps) {
+            this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
+          }
         },
-        (error) => {
-          console.warn('Fallo en sensores de movimiento:', error);
-          this.isCompassWorking = false;
-          this.showToast('⚠️ No se detectó brújula en el dispositivo. Puedes rotar usando el slider o arrastrando la pantalla.', 6500);
-          this.virtualControls.classList.add('visible');
-          this.setHeading(this.userHeading);
+        (gpsError) => {
+          console.warn('Aviso de geolocalización:', gpsError.message || gpsError);
+          this.showToast(`GPS: ${gpsError.message || 'Sin señal'}. Usando mapa base del campus.`, 4000);
+          if (this.hudGps) {
+            this.hudGps.textContent = 'Campus UNAJ (Base)';
+          }
         }
       );
+    } catch (gpsInitErr) {
+      console.warn('Error al iniciar geolocalización:', gpsInitErr);
     }
 
-    this.sensorManager.startGeolocation(
-      (location) => {
-        this.userLocation = {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          altitude: location.altitude || 25.0,
-          accuracy: location.accuracy,
-          isTemporary: false
-        };
-        if (this.hudGps) {
-          this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
-        }
-      },
-      (gpsError) => {
-        console.warn('Aviso de geolocalización:', gpsError.message);
-        this.showToast(`GPS: ${gpsError.message}. Mostrando mapa base del campus.`, 5000);
-        if (this.hudGps) {
-          this.hudGps.textContent = 'Campus UNAJ (Base)';
-        }
-      }
-    );
-
-    this.renderLoop();
+    // 5. Iniciar SIEMPRE el ciclo de renderizado para garantizar que la pantalla NUNCA se congele
+    this.isStarted = true;
+    this.isStarting = false;
+    if (!this.isRenderLoopRunning) {
+      this.isRenderLoopRunning = true;
+      this.renderLoop();
+    }
   }
 
   renderLoop() {
-    // Watchdog de transmisión de video: si el navegador pausa la imagen mientras los sensores siguen activos, reanudar
-    this.videoCheckCounter = (this.videoCheckCounter || 0) + 1;
-    if (this.videoCheckCounter % 30 === 0) {
-      if (this.videoEl && this.videoEl.paused && this.sensorManager && this.sensorManager.stream && this.sensorManager.stream.active) {
-        this.videoEl.play().catch(() => {});
+    try {
+      // Watchdog de transmisión de video: si el navegador pausa la imagen mientras el stream sigue activo, reanudar
+      this.videoCheckCounter = (this.videoCheckCounter || 0) + 1;
+      if (this.videoCheckCounter % 30 === 0) {
+        if (this.videoEl && this.videoEl.paused && this.sensorManager && this.sensorManager.stream && this.sensorManager.stream.active) {
+          this.videoEl.play().catch(() => {});
+        }
+      }
+
+      this.updateMarkers();
+      this.updateNavigationHUD();
+    } catch (loopErr) {
+      console.error('Aviso en renderLoop:', loopErr);
+    } finally {
+      requestAnimationFrame(() => this.renderLoop());
+    }
+  }
+
+  formatCameraErrorMessage(err) {
+    if (!err) return 'No se pudo acceder a la cámara física.';
+    const name = err.name || '';
+    const msg = err.message || '';
+
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+      return 'Permiso de cámara denegado. Puedes habilitarla desde los ajustes de tu navegador.';
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      return 'No se detectó ninguna cámara física disponible en este dispositivo.';
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+      return 'La cámara está siendo utilizada por otra app o bloqueada por el sistema.';
+    }
+    if (name === 'OverconstrainedError') {
+      return 'La resolución requerida no es compatible con la cámara del dispositivo.';
+    }
+    if (name === 'SecurityError' || msg.includes('INSECURE_CONTEXT')) {
+      return 'El navegador requiere conexión segura HTTPS para acceder a la cámara en el celular.';
+    }
+    return 'Cámara no disponible. Activando visor 360° interactivo.';
+  }
+
+  showFallbackBanner(title, desc, showRetry = false) {
+    if (!this.fallbackBanner) return;
+    if (this.fallbackBannerTitle) this.fallbackBannerTitle.textContent = title;
+    if (this.fallbackBannerDesc) this.fallbackBannerDesc.textContent = desc;
+    if (this.btnRetryCamera) {
+      this.btnRetryCamera.style.display = showRetry ? 'inline-flex' : 'none';
+    }
+    this.fallbackBanner.classList.add('visible');
+  }
+
+  hideFallbackBanner() {
+    if (this.fallbackBanner) {
+      this.fallbackBanner.classList.remove('visible');
+    }
+  }
+
+  activateManualRotationFallback(reason) {
+    this.isCompassWorking = false;
+    this.setHeading(this.userHeading || 0);
+    if (this.virtualControls) {
+      this.virtualControls.classList.add('visible');
+    }
+    this.showToast(`🧭 ${reason}`, 5000);
+  }
+
+  async retryCamera() {
+    if (!this.btnRetryCamera) return;
+    this.btnRetryCamera.disabled = true;
+    this.btnRetryCamera.textContent = '⏳ Probando...';
+    try {
+      const ok = await this.sensorManager.startCamera(this.videoEl);
+      if (ok) {
+        if (this.videoEl) this.videoEl.style.display = 'block';
+        if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
+        this.hideFallbackBanner();
+        this.showToast('✅ ¡Cámara activada con éxito!', 3000);
+      }
+    } catch (err) {
+      console.warn('Reintento de cámara fallido:', err);
+      const msg = this.formatCameraErrorMessage(err);
+      this.showToast(`⚠️ ${msg}`, 4500);
+    } finally {
+      if (this.btnRetryCamera) {
+        this.btnRetryCamera.disabled = false;
+        this.btnRetryCamera.textContent = '📷 Reintentar';
       }
     }
-
-    this.updateMarkers();
-    this.updateNavigationHUD();
-    requestAnimationFrame(() => this.renderLoop());
   }
 
   updateMarkers() {
