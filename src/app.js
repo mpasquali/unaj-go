@@ -1055,10 +1055,12 @@ class UnajARApp {
     this.selectedDestination = poi;
     this.activeDestination = poi;
 
+    // Asegurar que no quede ningún toast flotante visible sobre la cámara
+    this.hideToast();
+
     // Cambiar automáticamente al piso del destino si está filtrado en otro piso
     if (this.activeFloor !== 'all' && this.activeFloor !== poi.floor) {
       this.setFloor(poi.floor);
-      this.showToast(`Cambiando a nivel ${getFloorLabel(poi.floor)}`, 3000);
     }
 
     // Activar modo minimalista / limpio en la interfaz (oculta telemetría, buscador, filtros y elevador)
@@ -1077,8 +1079,6 @@ class UnajARApp {
 
     // Filtrar marcadores de Realidad Aumentada de inmediato para enfocar EXCLUSIVAMENTE el destino
     this.updateMarkers();
-
-    this.showToast(`🎯 Guía iniciada hacia: ${poi.name}`, 4000);
   }
 
   cancelNavigation() {
@@ -1150,7 +1150,8 @@ class UnajARApp {
     // Actualizar marcadores inmediatamente para restaurar todos los edificios del campus
     this.updateMarkers();
 
-    this.showToast('Navegación finalizada.', 2500);
+    // Eliminar la notificación redundante de fin de navegación y asegurar que la interfaz quede limpia
+    this.hideToast();
   }
 
   updateNavigationHUD() {
