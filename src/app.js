@@ -19,7 +19,8 @@ import {
   getLocationById,
   getFloorLabel,
   getFloorCode,
-  getFloorAltitude
+  getFloorAltitude,
+  findNearestCheckpoint
 } from './locations.js';
 
 class UnajARApp {
@@ -902,7 +903,7 @@ class UnajARApp {
    * Calibra la posición actual del usuario en base a un punto de referencia del plano (Checkpoint)
    * o coordenadas manuales (X, Y).
    */
-  setUserOrigin(checkpointOrCoords) {
+  setUserOrigin(checkpointOrCoords, options = {}) {
     if (!checkpointOrCoords) return;
     const isCp = typeof checkpointOrCoords.x === 'number' && typeof checkpointOrCoords.y === 'number';
     const x = isCp ? checkpointOrCoords.x : (checkpointOrCoords.coords?.x ?? 0);
@@ -951,7 +952,9 @@ class UnajARApp {
       this.updateNavigationHUD();
     }
 
-    this.showToast(`📍 Posición calibrada en: ${name}`, 3000);
+    if (!options.silent) {
+      this.showToast(options.toastMessage || `📍 Posición calibrada en: ${name}`, options.toastDuration || 3000);
+    }
   }
 
   openOriginPicker() {
@@ -1625,6 +1628,12 @@ class UnajARApp {
     }
 
     try {
+      // Disparar lectura inicial de GPS bajo el gesto táctil del usuario (en paralelo con cámara/orientación)
+      const initialLocPromise = this.sensorManager.requestInitialLocation().catch((err) => {
+        console.info('Aviso en lectura inicial de GPS:', err.message || err);
+        return null;
+      });
+
       // 1. Permiso de orientación (iOS 13+ y multiplataforma bajo gesto táctil)
       let orientationPerm = { supported: false, granted: false };
       try {
@@ -1664,10 +1673,43 @@ class UnajARApp {
       if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
       this.hideFallbackBanner();
 
-      // 3. Calibrar posición inicial desde el checkpoint seleccionado en el onboarding
-      const selectedCheckpointId = this.selectOnboardingOrigin ? this.selectOnboardingOrigin.value : 'hall-central-mosconi';
-      const initialCheckpoint = getCheckpointById(selectedCheckpointId) || CAMPUS_CHECKPOINTS[0];
-      this.setUserOrigin(initialCheckpoint);
+      // 3. Autodetección del punto de inicio (Checkpoint más cercano vía GPS)
+      let initialCheckpoint = CAMPUS_CHECKPOINTS[0];
+      let autodetected = false;
+      let detectedDistance = 0;
+
+      try {
+        // Esperar resolución de GPS con timeout de seguridad (máx 3500ms total)
+        const initialPos = await Promise.race([
+          initialLocPromise,
+          new Promise((resolve) => setTimeout(() => resolve(null), 3500))
+        ]);
+
+        if (
+          initialPos &&
+          initialPos.coords &&
+          typeof initialPos.coords.latitude === 'number' &&
+          typeof initialPos.coords.longitude === 'number'
+        ) {
+          const { checkpoint, distanceMeters } = findNearestCheckpoint(
+            initialPos.coords.latitude,
+            initialPos.coords.longitude
+          );
+          if (checkpoint) {
+            initialCheckpoint = checkpoint;
+            autodetected = true;
+            detectedDistance = distanceMeters;
+          }
+        }
+      } catch (geoErr) {
+        console.info('Autodetección GPS no disponible, usando origen base:', geoErr.message || geoErr);
+      }
+
+      const toastMessage = autodetected
+        ? `📍 Origen autodetectado: ${initialCheckpoint.shortName || initialCheckpoint.name} (~${Math.round(detectedDistance)}m)`
+        : `📍 Origen asignado: ${initialCheckpoint.shortName || initialCheckpoint.name}`;
+
+      this.setUserOrigin(initialCheckpoint, { toastMessage, toastDuration: 3500 });
 
       // Ocultar modal de onboarding ya que la cámara y sensores AR están en curso
       if (this.permissionModal) {

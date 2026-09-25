@@ -5,6 +5,26 @@
 
 const toRad = (degrees) => (degrees * Math.PI) / 180;
 const toDeg = (radians) => (radians * 180) / Math.PI;
+const EARTH_RADIUS_METERS = 6371000;
+
+/**
+ * Calcula la distancia geográfica real en metros entre dos coordenadas GPS (Fórmula de Haversine).
+ * Utilizado para comparar la lectura GPS del dispositivo con los checkpoints del campus.
+ */
+export function calculateGeoDistance(lat1, lon1, lat2, lon2) {
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_METERS * c;
+}
 
 /**
  * Calcula la distancia euclidiana real en metros entre dos coordenadas (X, Y)

@@ -1,3 +1,5 @@
+import { calculateGeoDistance } from './geo-math.js';
+
 /**
  * Configuración de Lugares y Puntos de Interés (POIs) del Campus UNAJ
  * Sistema de Coordenadas Cartesianas Internas (X, Y en metros)
@@ -36,6 +38,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: 0,
     y: 0,
+    latitude: -34.774400,
+    longitude: -58.268400,
     icon: "🏛️",
     description: "Distribuidor central de pasillos, aulas y rectorado."
   },
@@ -47,6 +51,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: 110,
     y: 67,
+    latitude: -34.773800,
+    longitude: -58.267200,
     icon: "🚪",
     description: "Ingreso peatonal principal del campus sobre Av. Calchaquí 6200."
   },
@@ -58,6 +64,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: 18,
     y: -33,
+    latitude: -34.774700,
+    longitude: -58.268200,
     icon: "⛲",
     description: "Espacio abierto central entre Mosconi, Savio y áreas parquizadas."
   },
@@ -69,6 +77,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: 91,
     y: -78,
+    latitude: -34.775100,
+    longitude: -58.267400,
     icon: "🏫",
     description: "Entrada principal a las aulas de la planta baja del Edificio Savio."
   },
@@ -80,6 +90,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: -30,
     y: -140,
+    latitude: -34.775657,
+    longitude: -58.268729,
     icon: "☕",
     description: "Punto de encuentro y descanso entre los pabellones de cursada."
   },
@@ -91,6 +103,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: -50,
     y: -157,
+    latitude: -34.775814,
+    longitude: -58.268951,
     icon: "🧪",
     description: "Acceso a laboratorios de química, biología y ciencias naturales."
   },
@@ -102,6 +116,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 0,
     x: -34,
     y: -185,
+    latitude: -34.776064,
+    longitude: -58.268769,
     icon: "📚",
     description: "Ingreso principal al edificio de la biblioteca central universitaria."
   },
@@ -113,6 +129,8 @@ export const CAMPUS_CHECKPOINTS = [
     floor: 1,
     x: 44,
     y: -50,
+    latitude: -34.774850,
+    longitude: -58.267920,
     icon: "🪜",
     description: "Llegada de escalera al primer piso del Edificio Mosconi."
   }
@@ -949,3 +967,38 @@ export function getFloorAltitude(floorNumber) {
   }
   return CAMPUS_METADATA.baseGroundAltitude + floorNumber * CAMPUS_METADATA.metersPerFloor;
 }
+
+/**
+ * Encuentra el checkpoint del campus más cercano a unas coordenadas GPS (latitud y longitud).
+ * Utiliza la fórmula de Haversine para cálculo geodésico preciso de distancias en metros.
+ * @param {number} latitude - Latitud GPS del dispositivo
+ * @param {number} longitude - Longitud GPS del dispositivo
+ * @returns {{ checkpoint: Object, distanceMeters: number }}
+ */
+export function findNearestCheckpoint(latitude, longitude) {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
+    return {
+      checkpoint: CAMPUS_CHECKPOINTS[0],
+      distanceMeters: 0
+    };
+  }
+
+  let nearestCheckpoint = CAMPUS_CHECKPOINTS[0];
+  let minDistance = Infinity;
+
+  for (const cp of CAMPUS_CHECKPOINTS) {
+    if (typeof cp.latitude === 'number' && typeof cp.longitude === 'number') {
+      const dist = calculateGeoDistance(latitude, longitude, cp.latitude, cp.longitude);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestCheckpoint = cp;
+      }
+    }
+  }
+
+  return {
+    checkpoint: nearestCheckpoint,
+    distanceMeters: minDistance
+  };
+}
+
