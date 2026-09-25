@@ -34,7 +34,7 @@
     <!-- 2. Capa de Carteles Flotantes AR -->
     <div id="markers-container"></div>
 
-    <!-- 3. Barra Superior: Tarjeta Flotante de Búsqueda (Glassmorphism) -->
+    <!-- 3. Barra Superior: Tarjeta Flotante de Búsqueda y Selector de Origen (Glassmorphism) -->
     <div id="top-nav-bar" class="top-floating-wrapper">
       <button id="btn-open-destination-picker" class="destination-floating-card" type="button" aria-label="¿A dónde vamos?">
         <div class="card-icon-bubble">
@@ -50,6 +50,15 @@
           <span id="search-btn-badge" class="search-badge-btn">Buscar 🔍</span>
         </div>
       </button>
+
+      <!-- Píldora de Selección de Punto de Partida / Calibración -->
+      <div class="origin-pill-wrapper">
+        <button id="btn-open-origin-picker" class="origin-picker-pill" type="button" aria-label="Cambiar punto de partida">
+          <span class="origin-icon">📍</span>
+          <span class="origin-label-wrap">Estoy en: <strong id="current-origin-label">Hall Central (0,0)</strong></span>
+          <span class="origin-chevron">▾</span>
+        </button>
+      </div>
     </div>
 
     <!-- 5. SELECTOR VISUAL DE PISOS (Elevador lateral: -1 a 4) -->
@@ -152,6 +161,14 @@
             <h2>🎯 ¿A dónde vamos?</h2>
             <button id="btn-close-dest-picker" class="btn-close">&times;</button>
           </div>
+          <!-- Selector/Indicador de Punto de Partida -->
+          <div class="dest-origin-context-row">
+            <span class="dest-origin-tag">Desde:</span>
+            <button id="btn-switch-origin-from-dest" class="dest-origin-btn" type="button" title="Cambiar punto de partida">
+              <span id="dest-origin-name">📍 Hall Central Mosconi</span>
+              <span class="dest-origin-edit">Cambiar ✏️</span>
+            </button>
+          </div>
           <!-- Barra de búsqueda rápida -->
           <div class="search-input-wrapper">
             <span class="search-input-icon">🔍</span>
@@ -173,6 +190,31 @@
       </div>
     </div>
 
+    <!-- 9B. MODAL SELECTOR DE PUNTO DE PARTIDA / CALIBRACIÓN DE ORIGEN -->
+    <div id="origin-picker-modal" class="destination-modal origin-modal" style="display: none;">
+      <div class="destination-modal-sheet">
+        <div class="modal-sheet-header">
+          <div class="sheet-handle"></div>
+          <div class="modal-sheet-title-bar">
+            <h2>📍 Punto de Partida</h2>
+            <button id="btn-close-origin-picker" class="btn-close" type="button">&times;</button>
+          </div>
+          <p class="origin-sheet-subtitle">Selecciona en qué entrada o pasillo te encuentras para calibrar tu posición:</p>
+        </div>
+
+        <!-- Lista scrollable de puntos de calibración -->
+        <div id="origin-list-container" class="destination-list origin-list">
+          <!-- Generado dinámicamente -->
+        </div>
+
+        <div class="origin-sheet-footer">
+          <button id="btn-calibrate-zero" class="btn-walk highlight btn-full-width" type="button">
+            🎯 Calibrar mi posición actual aquí como (0, 0)
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 10. CONTROLES VIRTUALES PARA COMPUTADORA / MODO SIMULACIÓN -->
     <div id="virtual-controls" class="virtual-controls-panel">
       <div class="controls-header">
@@ -185,9 +227,14 @@
         <div class="control-row">
           <label for="select-start-point">Parado en:</label>
           <select id="select-start-point" class="controls-select">
-            <option value="plaza_central">Plaza Central (Frente a Mosconi)</option>
-            <option value="acceso_calchaqui">Entrada Peatonal (Av. Calchaquí)</option>
-            <option value="patio_ypf">Patio Laboratorios YPF</option>
+            <option value="hall-central-mosconi" selected>Hall Central Mosconi (0, 0)</option>
+            <option value="entrada-peatonal-calchaqui">Entrada Principal (Av. Calchaquí)</option>
+            <option value="plaza-central">Plaza Central / Mástil</option>
+            <option value="ingreso-edificio-savio">Edificio Savio (Aulas PB)</option>
+            <option value="patio-buffet-el-paso">Patio Buffet El Paso</option>
+            <option value="ingreso-edificio-hudson">Edificio Hudson (Laboratorios)</option>
+            <option value="ingreso-biblioteca-central">Biblioteca Central</option>
+            <option value="mosconi-piso-1-escalera">Escalera Mosconi (Piso 1)</option>
           </select>
         </div>
 
@@ -264,11 +311,24 @@
         <h1 class="modal-title">UNAJ Go</h1>
         <p class="modal-subtitle">Realidad Aumentada & Navegación</p>
         <p class="modal-description">
-          Para guiarte en vivo por el campus con la cámara y la brújula, necesitamos acceso a tu cámara y ubicación GPS.
+          Para guiarte en vivo por los pasillos con Realidad Aumentada, usaremos la cámara y la brújula de tu celular.
         </p>
+        <div class="onboarding-origin-box">
+          <label for="select-onboarding-origin" class="onboarding-origin-label">📍 ¿Dónde te encuentras ahora?</label>
+          <select id="select-onboarding-origin" class="controls-select onboarding-select">
+            <option value="hall-central-mosconi" selected>🏛️ Hall Central Mosconi (Origen 0,0)</option>
+            <option value="entrada-peatonal-calchaqui">🚪 Entrada Principal (Av. Calchaquí)</option>
+            <option value="plaza-central">⛲ Plaza Central / Mástil</option>
+            <option value="ingreso-edificio-savio">🏫 Edificio Savio (Ingreso Aulas PB)</option>
+            <option value="patio-buffet-el-paso">☕ Patio Buffet El Paso</option>
+            <option value="ingreso-edificio-hudson">🧪 Edificio Hudson (Laboratorios)</option>
+            <option value="ingreso-biblioteca-central">📚 Biblioteca Central (Acceso)</option>
+            <option value="mosconi-piso-1-escalera">🪜 Escalera Central Mosconi (P1)</option>
+          </select>
+        </div>
         <div class="modal-actions">
-          <button id="btn-start" class="btn-primary highlight btn-cta-large" type="button" aria-label="Activar Cámara y Ubicación">
-            📱 Activar Cámara y Ubicación
+          <button id="btn-start" class="btn-primary highlight btn-cta-large" type="button" aria-label="Iniciar Visor AR">
+            📱 Iniciar Visor AR
           </button>
         </div>
       </div>

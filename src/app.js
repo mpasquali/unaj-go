@@ -11,7 +11,10 @@ import {
 import {
   CAMPUS_LOCATIONS,
   CAMPUS_FLOORS,
+  CAMPUS_CHECKPOINTS,
   SIMULATION_START_POINTS,
+  getAllCheckpoints,
+  getCheckpointById,
   getLocationsByFilter,
   getLocationById,
   getFloorLabel,
@@ -23,11 +26,18 @@ class UnajARApp {
   constructor() {
     this.sensorManager = new SensorManager();
 
-    // Estado principal y estabilización espacial (Anti-Drift / Deadband / 60FPS Smoothing)
-    this.userLocation = null; // Coordenadas continuas renderizadas en AR (suavizadas con lerp)
-    this.targetLocation = null; // Coordenadas objetivo del GPS
-    this.lastAcceptedLocation = null; // Última posición estable aceptada por el umbral
-    this.locationThresholdMeters = 2.5; // Umbral de estabilidad (ignora ruido satelital menor a 2.5m)
+    // Estado principal y posicionamiento métrico plano (X, Y en metros)
+    this.currentCheckpoint = CAMPUS_CHECKPOINTS[0];
+    this.userLocation = {
+      x: this.currentCheckpoint.x,
+      y: this.currentCheckpoint.y,
+      floor: this.currentCheckpoint.floor,
+      altitude: 25.0,
+      name: this.currentCheckpoint.name
+    };
+    this.targetLocation = { ...this.userLocation };
+    this.lastAcceptedLocation = { ...this.userLocation };
+    this.locationThresholdMeters = 2.5; // Umbral de estabilidad (ignora ruido menor a 2.5m)
     this.arrivalThresholdMeters = 2.0; // Umbral de proximidad de llegada a destino (distancia <= 2 metros)
     this.locationLerpFactor = 0.08; // Factor de interpolación lineal por frame (~300ms a 60 FPS)
 
@@ -133,6 +143,18 @@ class UnajARApp {
     this.destListContainer = document.getElementById('dest-list-container');
     this.modalCategoryBar = document.getElementById('modal-category-bar');
     this.modalFilterButtons = document.querySelectorAll('.modal-filter-btn');
+
+    // Selector de Origen / Calibración de Checkpoints
+    this.originSelectorBar = document.getElementById('origin-selector-bar');
+    this.btnOpenOriginPicker = document.getElementById('btn-open-origin-picker');
+    this.currentOriginLabel = document.getElementById('current-origin-label');
+    this.destOriginName = document.getElementById('dest-origin-name');
+    this.btnSwitchOriginFromDest = document.getElementById('btn-switch-origin-from-dest');
+    this.originPickerModal = document.getElementById('origin-picker-modal');
+    this.btnCloseOriginPicker = document.getElementById('btn-close-origin-picker');
+    this.originListContainer = document.getElementById('origin-list-container');
+    this.btnCalibrateZero = document.getElementById('btn-calibrate-zero');
+    this.selectOnboardingOrigin = document.getElementById('select-onboarding-origin');
 
     // Controles virtuales PC
     this.virtualControls = document.getElementById('virtual-controls');
@@ -421,8 +443,10 @@ class UnajARApp {
           return;
         }
         try {
+          const dist = calculateDistance(this.userLocation, this.selectedDestination.coords);
+          const step = Math.min(15, dist > 1.5 ? dist - 0.5 : dist);
           const bearingToDest = calculateBearing(this.userLocation, this.selectedDestination.coords);
-          this.advanceUserPosition(15, bearingToDest);
+          this.advanceUserPosition(Math.max(1, Math.round(step)), bearingToDest);
         } catch (err) {
           console.error('Error al avanzar hacia el destino:', err);
           this.showToast('⚠️ Error al calcular la dirección hacia el destino.', 3000);
@@ -452,26 +476,94 @@ class UnajARApp {
       });
     }
 
-    // 6. Cambio de punto de partida virtual
+    // 6. Cambio de punto de partida virtual / Calibración
     if (this.selectStartPoint) {
       this.selectStartPoint.addEventListener('change', (e) => {
         const pointKey = e.target.value;
-        const selected = SIMULATION_START_POINTS[pointKey];
-        if (selected) {
-          const loc = {
-            latitude: selected.latitude,
-            longitude: selected.longitude,
-            altitude: selected.altitude,
-            accuracy: 5
-          };
-          this.userLocation = { ...loc };
-          this.targetLocation = { ...loc };
-          this.lastAcceptedLocation = { ...loc };
-          if (this.hudGps) {
-            this.hudGps.textContent = selected.name.split('(')[0].trim();
-          }
+        const cp = getCheckpointById(pointKey) || CAMPUS_CHECKPOINTS.find((c) => c.id === pointKey);
+        if (cp) {
+          this.setUserOrigin(cp);
+        } else if (SIMULATION_START_POINTS[pointKey]) {
+          const sim = SIMULATION_START_POINTS[pointKey];
+          this.setUserOrigin({
+            id: sim.id,
+            name: sim.name,
+            x: sim.x || 0,
+            y: sim.y || 0,
+            floor: sim.defaultFloor || 0
+          });
         }
       });
+    }
+
+    // 6B. Selector de Punto de Partida / Calibración de Origen
+    if (this.btnOpenOriginPicker) {
+      const handleOpenOrigin = (e) => {
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable && e.type !== 'touchstart') e.preventDefault();
+        }
+        this.openOriginPicker();
+      };
+      this.btnOpenOriginPicker.addEventListener('click', handleOpenOrigin);
+      this.btnOpenOriginPicker.addEventListener('touchend', handleOpenOrigin, { passive: false });
+    }
+
+    if (this.btnCloseOriginPicker) {
+      const handleCloseOrigin = (e) => {
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable) e.preventDefault();
+        }
+        this.closeOriginPicker();
+      };
+      this.btnCloseOriginPicker.addEventListener('click', handleCloseOrigin);
+      this.btnCloseOriginPicker.addEventListener('touchend', handleCloseOrigin, { passive: false });
+    }
+
+    if (this.btnSwitchOriginFromDest) {
+      const handleSwitchOrigin = (e) => {
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable) e.preventDefault();
+        }
+        this.closeDestinationPicker();
+        this.openOriginPicker();
+      };
+      this.btnSwitchOriginFromDest.addEventListener('click', handleSwitchOrigin);
+      this.btnSwitchOriginFromDest.addEventListener('touchend', handleSwitchOrigin, { passive: false });
+    }
+
+    if (this.btnCalibrateZero) {
+      const handleCalibrateZero = (e) => {
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable) e.preventDefault();
+        }
+        this.setUserOrigin({
+          id: 'origen-personalizado',
+          name: 'Punto Calibrado (0, 0)',
+          shortName: 'Origen (0,0)',
+          x: 0,
+          y: 0,
+          floor: this.activeFloor === 'all' ? 0 : this.activeFloor
+        });
+      };
+      this.btnCalibrateZero.addEventListener('click', handleCalibrateZero);
+      this.btnCalibrateZero.addEventListener('touchend', handleCalibrateZero, { passive: false });
+    }
+
+    if (this.originPickerModal) {
+      this.originPickerModal.addEventListener('click', (e) => {
+        if (e.target === this.originPickerModal) {
+          this.closeOriginPicker();
+        }
+      });
+      this.originPickerModal.addEventListener('touchend', (e) => {
+        if (e.target === this.originPickerModal) {
+          this.closeOriginPicker();
+        }
+      }, { passive: true });
     }
 
     // 7. Arrastrar con mouse o touch en pantalla para girar la vista 360°
@@ -807,7 +899,106 @@ class UnajARApp {
   }
 
   /**
-   * Desplaza virtualmente al usuario (para pruebas en PC)
+   * Calibra la posición actual del usuario en base a un punto de referencia del plano (Checkpoint)
+   * o coordenadas manuales (X, Y).
+   */
+  setUserOrigin(checkpointOrCoords) {
+    if (!checkpointOrCoords) return;
+    const isCp = typeof checkpointOrCoords.x === 'number' && typeof checkpointOrCoords.y === 'number';
+    const x = isCp ? checkpointOrCoords.x : (checkpointOrCoords.coords?.x ?? 0);
+    const y = isCp ? checkpointOrCoords.y : (checkpointOrCoords.coords?.y ?? 0);
+    const floor = checkpointOrCoords.floor !== undefined ? checkpointOrCoords.floor : 0;
+    const name = checkpointOrCoords.shortName || checkpointOrCoords.name || `Punto (${x}m, ${y}m)`;
+
+    this.currentCheckpoint = { ...checkpointOrCoords, x, y, floor, name };
+    const loc = {
+      x,
+      y,
+      floor,
+      altitude: getFloorAltitude(floor),
+      name
+    };
+
+    this.userLocation = { ...loc };
+    this.targetLocation = { ...loc };
+    this.lastAcceptedLocation = { ...loc };
+
+    // Actualizar piso activo si corresponde
+    if (typeof floor === 'number' && this.activeFloor !== 'all' && this.activeFloor !== floor) {
+      this.setFloor(floor);
+    }
+
+    if (this.currentOriginLabel) {
+      this.currentOriginLabel.textContent = `${name} (${x},${y})`;
+    }
+    if (this.destOriginName) {
+      this.destOriginName.textContent = `📍 ${name}`;
+    }
+    if (this.hudGps) {
+      this.hudGps.textContent = `${name} (X:${x}m, Y:${y}m)`;
+    }
+
+    // Si hay un selector de inicio en simulación, sincronizarlo
+    if (this.selectStartPoint && checkpointOrCoords.id) {
+      this.selectStartPoint.value = checkpointOrCoords.id;
+    }
+
+    this.renderOriginList();
+    this.closeOriginPicker();
+
+    // Si hay una ruta en curso, refrescar inmediatamente la guía
+    if (this.activeDestination) {
+      this.updateNavigationHUD();
+    }
+
+    this.showToast(`📍 Posición calibrada en: ${name}`, 3000);
+  }
+
+  openOriginPicker() {
+    if (!this.originPickerModal) return;
+    this.originPickerModal.style.display = 'flex';
+    this.originPickerModal.classList.add('active');
+    this.renderOriginList();
+  }
+
+  closeOriginPicker() {
+    if (!this.originPickerModal) return;
+    this.originPickerModal.classList.remove('active');
+    this.originPickerModal.style.display = 'none';
+  }
+
+  renderOriginList() {
+    if (!this.originListContainer) return;
+    this.originListContainer.innerHTML = '';
+
+    CAMPUS_CHECKPOINTS.forEach((cp) => {
+      const isCurrent = this.currentCheckpoint && this.currentCheckpoint.id === cp.id;
+      const card = document.createElement('div');
+      card.className = `origin-item-card ${isCurrent ? 'is-active' : ''}`;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.innerHTML = `
+        <span class="origin-item-icon">${cp.icon || '📍'}</span>
+        <div class="origin-item-info">
+          <h4 class="origin-item-name">${cp.name}</h4>
+          <p class="origin-item-desc">${cp.description || cp.subtitle}</p>
+        </div>
+        <span class="origin-item-coords">(${cp.x}m, ${cp.y}m)</span>
+      `;
+
+      const selectCheckpoint = (e) => {
+        if (e) e.stopPropagation();
+        this.setUserOrigin(cp);
+      };
+
+      card.addEventListener('click', selectCheckpoint);
+      card.addEventListener('touchend', selectCheckpoint, { passive: false });
+      this.originListContainer.appendChild(card);
+    });
+  }
+
+  /**
+   * Desplaza virtualmente al usuario (para pruebas en PC y pasillos)
    */
   advanceUserPosition(meters, bearingDegrees) {
     if (!this.userLocation) return;
@@ -816,7 +1007,7 @@ class UnajARApp {
     this.targetLocation = { ...moved };
     this.lastAcceptedLocation = { ...moved };
     if (this.hudGps) {
-      this.hudGps.textContent = `Paseo Virtual (GPS Simulado)`;
+      this.hudGps.textContent = `X: ${Math.round(this.userLocation.x)}m, Y: ${Math.round(this.userLocation.y)}m`;
     }
     this.showToast(`🚶 Avanzaste ${Math.abs(meters)}m`, 1500);
   }
@@ -1065,14 +1256,11 @@ class UnajARApp {
     try {
       this.setLoading(true, 'Trazando ruta...');
 
-      // Validar coordenadas numéricas
-      if (
-        typeof target.coords.latitude !== 'number' ||
-        typeof target.coords.longitude !== 'number' ||
-        isNaN(target.coords.latitude) ||
-        isNaN(target.coords.longitude)
-      ) {
-        throw new Error('Las coordenadas del punto de llegada no son válidas.');
+      // Validar coordenadas métricas planas (X, Y)
+      const tx = typeof target.x === 'number' ? target.x : (target.coords && target.coords.x);
+      const ty = typeof target.y === 'number' ? target.y : (target.coords && target.coords.y);
+      if (typeof tx !== 'number' || typeof ty !== 'number' || isNaN(tx) || isNaN(ty)) {
+        throw new Error('Las coordenadas métricas del punto de llegada no son válidas.');
       }
 
       this.startNavigation(target);
@@ -1476,55 +1664,12 @@ class UnajARApp {
       if (this.simulatedBgEl) this.simulatedBgEl.style.display = 'none';
       this.hideFallbackBanner();
 
-      // 3. Permiso y obtención de ubicación inicial bajo gesto del usuario
-      try {
-        const initialPos = await this.sensorManager.requestInitialLocation();
-        if (initialPos && initialPos.coords) {
-          const loc = {
-            latitude: initialPos.coords.latitude,
-            longitude: initialPos.coords.longitude,
-            altitude: initialPos.coords.altitude || 25.0,
-            accuracy: initialPos.coords.accuracy,
-            isTemporary: false
-          };
-          this.userLocation = { ...loc };
-          this.targetLocation = { ...loc };
-          this.lastAcceptedLocation = { ...loc };
-          if (this.hudGps) {
-            this.hudGps.textContent = `±${Math.round(initialPos.coords.accuracy)}m`;
-          }
-        }
-      } catch (geoErr) {
-        console.warn('Error u obtención inicial de ubicación:', geoErr);
-        if (geoErr && (geoErr.code === 1 || geoErr.code === (geoErr.PERMISSION_DENIED || 1) || /denied/i.test(geoErr.message || ''))) {
-          // Permiso de geolocalización expresamente denegado
-          this.isStarting = false;
-          if (this.btnStart) {
-            this.btnStart.disabled = false;
-            this.btnStart.textContent = '📱 Activar Cámara y Ubicación';
-          }
-          this.showPermissionDeniedModal('location', geoErr);
-          return;
-        }
+      // 3. Calibrar posición inicial desde el checkpoint seleccionado en el onboarding
+      const selectedCheckpointId = this.selectOnboardingOrigin ? this.selectOnboardingOrigin.value : 'hall-central-mosconi';
+      const initialCheckpoint = getCheckpointById(selectedCheckpointId) || CAMPUS_CHECKPOINTS[0];
+      this.setUserOrigin(initialCheckpoint);
 
-        // Si fue timeout o precisión temporal, usar ubicación base del campus mientras se busca señal satelital
-        const fallbackLoc = {
-          latitude: SIMULATION_START_POINTS.plaza_central.latitude,
-          longitude: SIMULATION_START_POINTS.plaza_central.longitude,
-          altitude: 25.0,
-          accuracy: 50,
-          isTemporary: true
-        };
-        this.userLocation = { ...fallbackLoc };
-        this.targetLocation = { ...fallbackLoc };
-        this.lastAcceptedLocation = { ...fallbackLoc };
-        if (this.hudGps) {
-          this.hudGps.textContent = 'GPS: Buscando señal...';
-        }
-        this.showToast('Buscando señal GPS de alta precisión...', 3500);
-      }
-
-      // Ocultar modal de onboarding ya que los permisos principales fueron concedidos
+      // Ocultar modal de onboarding ya que la cámara y sensores AR están en curso
       if (this.permissionModal) {
         this.permissionModal.style.display = 'none';
       }
@@ -1550,25 +1695,22 @@ class UnajARApp {
         }
       }
 
-      // 5. Iniciar geolocalización continua en segundo plano con umbral de estabilidad (2.5m)
+      // 5. Iniciar geolocalización satelital en segundo plano (Opcional / Telemetría externa)
+      // En interiores universitarios la app funciona de forma autónoma con los checkpoints de plano
       try {
         this.sensorManager.startGeolocation(
           (location) => {
             const newTarget = {
-              latitude: location.latitude,
-              longitude: location.longitude,
+              x: location.x,
+              y: location.y,
+              floor: location.floor !== undefined ? location.floor : (this.activeFloor === 'all' ? 0 : this.activeFloor),
               altitude: location.altitude || 25.0,
               accuracy: location.accuracy,
-              isTemporary: false
+              name: this.currentCheckpoint ? this.currentCheckpoint.name : 'GPS Exterior'
             };
 
-            // Primera asignación si aún no estaba inicializada
-            if (!this.userLocation) {
-              this.userLocation = { ...newTarget };
-              this.targetLocation = { ...newTarget };
-              this.lastAcceptedLocation = { ...newTarget };
-            } else {
-              // Umbral de estabilidad (2.5m) contra ruido satelital cuando el usuario está quieto
+            // Solo actualizar si la precisión es buena (< 25m) para evitar que desplace al usuario dentro de las aulas
+            if (location.accuracy && location.accuracy <= 25) {
               const dist = this.lastAcceptedLocation
                 ? calculateDistance(this.lastAcceptedLocation, newTarget)
                 : 999;
@@ -1576,24 +1718,20 @@ class UnajARApp {
               if (dist >= this.locationThresholdMeters && !location.isStationary) {
                 this.targetLocation = { ...newTarget };
                 this.lastAcceptedLocation = { ...newTarget };
-              } else if (this.targetLocation) {
-                this.targetLocation.accuracy = location.accuracy;
               }
             }
 
-            if (this.hudGps) {
-              this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
+            if (this.hudGps && this.userLocation) {
+              this.hudGps.textContent = `X: ${Math.round(this.userLocation.x)}m, Y: ${Math.round(this.userLocation.y)}m`;
             }
           },
           (gpsError) => {
-            console.warn('Aviso de geolocalización continua:', gpsError.message || gpsError);
-            if (gpsError && (gpsError.code === 1 || gpsError.code === (gpsError.PERMISSION_DENIED || 1))) {
-              this.showPermissionDeniedModal('location', gpsError);
-            }
+            // No bloquear la app si el GPS satelital no tiene señal en interiores
+            console.info('Aviso GPS en interiores (uso exclusivo de plano cartesiano):', gpsError.message || gpsError);
           }
         );
       } catch (gpsInitErr) {
-        console.warn('Error al iniciar geolocalización continua:', gpsInitErr);
+        console.info('GPS satelital no inicializado (modo plano interior activo):', gpsInitErr);
       }
 
       this.isStarted = true;
@@ -1647,22 +1785,22 @@ class UnajARApp {
     if (this.targetLocation && this.userLocation) {
       const dist = calculateDistance(this.userLocation, this.targetLocation);
       if (dist > 0.02) {
-        this.userLocation.latitude = lerp(
-          this.userLocation.latitude,
-          this.targetLocation.latitude,
+        this.userLocation.x = lerp(
+          this.userLocation.x,
+          this.targetLocation.x,
           this.locationLerpFactor
         );
-        this.userLocation.longitude = lerp(
-          this.userLocation.longitude,
-          this.targetLocation.longitude,
+        this.userLocation.y = lerp(
+          this.userLocation.y,
+          this.targetLocation.y,
           this.locationLerpFactor
         );
         const curAlt = this.userLocation.altitude !== undefined ? this.userLocation.altitude : 25.0;
         const tgtAlt = this.targetLocation.altitude !== undefined ? this.targetLocation.altitude : 25.0;
         this.userLocation.altitude = lerp(curAlt, tgtAlt, this.locationLerpFactor);
       } else {
-        this.userLocation.latitude = this.targetLocation.latitude;
-        this.userLocation.longitude = this.targetLocation.longitude;
+        this.userLocation.x = this.targetLocation.x;
+        this.userLocation.y = this.targetLocation.y;
         this.userLocation.altitude = this.targetLocation.altitude;
       }
     }

@@ -49,8 +49,8 @@ export class SensorManager {
     if (buffer.length === 1) return { ...buffer[0] };
 
     let totalWeight = 0;
-    let sumLat = 0;
-    let sumLon = 0;
+    let sumX = 0;
+    let sumY = 0;
     let sumAlt = 0;
     let minAccuracy = Infinity;
 
@@ -65,8 +65,11 @@ export class SensorManager {
       const weight = recencyWeight * accWeight;
       totalWeight += weight;
 
-      sumLat += sample.latitude * weight;
-      sumLon += sample.longitude * weight;
+      const sx = typeof sample.x === 'number' ? sample.x : 0;
+      const sy = typeof sample.y === 'number' ? sample.y : 0;
+
+      sumX += sx * weight;
+      sumY += sy * weight;
       sumAlt += (sample.altitude || 25.0) * weight;
 
       if (sample.accuracy && sample.accuracy < minAccuracy) {
@@ -79,8 +82,8 @@ export class SensorManager {
     const lastSample = buffer[buffer.length - 1];
 
     return {
-      latitude: sumLat / totalWeight,
-      longitude: sumLon / totalWeight,
+      x: sumX / totalWeight,
+      y: sumY / totalWeight,
       altitude: sumAlt / totalWeight,
       accuracy: lastSample.accuracy || (minAccuracy !== Infinity ? minAccuracy : 10),
       timestamp: lastSample.timestamp || Date.now()
@@ -456,6 +459,11 @@ export class SensorManager {
     };
 
     try {
+      const lat0 = -34.774400;
+      const lon0 = -58.268400;
+      const mLat = 111139;
+      const mLon = 91290;
+
       this.watchId = navigator.geolocation.watchPosition(
         (position) => {
           const rawLat = position.coords.latitude;
@@ -463,11 +471,15 @@ export class SensorManager {
           const rawAlt = position.coords.altitude || 25.0;
           const accuracy = position.coords.accuracy;
 
+          const rawX = Math.round((rawLon - lon0) * mLon);
+          const rawY = Math.round((rawLat - lat0) * mLat);
+
           const rawCoord = {
-            latitude: rawLat,
-            longitude: rawLon,
+            x: rawX,
+            y: rawY,
             altitude: rawAlt,
-            accuracy
+            accuracy,
+            floor: 0
           };
 
           // 1. Filtrado de valores atípicos (outlier rejection):
@@ -524,10 +536,11 @@ export class SensorManager {
           // Aplicar filtro pasa-bajos (EMA) para suavizar la transición y evitar saltos abruptos.
           const alpha = this.locationSmoothingAlpha;
           this.filteredLocation = {
-            latitude: this.filteredLocation.latitude + (weightedCoord.latitude - this.filteredLocation.latitude) * alpha,
-            longitude: this.filteredLocation.longitude + (weightedCoord.longitude - this.filteredLocation.longitude) * alpha,
+            x: this.filteredLocation.x + (weightedCoord.x - this.filteredLocation.x) * alpha,
+            y: this.filteredLocation.y + (weightedCoord.y - this.filteredLocation.y) * alpha,
             altitude: this.filteredLocation.altitude + (weightedCoord.altitude - this.filteredLocation.altitude) * alpha,
             accuracy: weightedCoord.accuracy,
+            floor: 0,
             isStationary: false
           };
 

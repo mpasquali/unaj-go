@@ -1,76 +1,84 @@
 /**
- * Utilidades matemáticas para geolocalización y proyección de Realidad Aumentada
+ * Utilidades matemáticas para posicionamiento cartesiano plano (X, Y en metros)
+ * y proyección de Realidad Aumentada para interiores universitarios UNAJ.
  */
-
-const EARTH_RADIUS_METERS = 6371000;
 
 const toRad = (degrees) => (degrees * Math.PI) / 180;
 const toDeg = (radians) => (radians * 180) / Math.PI;
 
 /**
- * Calcula la distancia en metros entre dos coordenadas geográficas (Fórmula de Haversine)
+ * Calcula la distancia euclidiana real en metros entre dos coordenadas (X, Y)
+ * mediante el Teorema de Pitágoras: sqrt((x2 - x1)^2 + (y2 - y1)^2)
  */
 export function calculateDistance(coord1, coord2) {
-  const dLat = toRad(coord2.latitude - coord1.latitude);
-  const dLon = toRad(coord2.longitude - coord1.longitude);
+  if (!coord1 || !coord2) return 0;
+  const c1 = coord1.coords || coord1;
+  const c2 = coord2.coords || coord2;
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(coord1.latitude)) *
-      Math.cos(toRad(coord2.latitude)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+  const x1 = typeof c1.x === 'number' ? c1.x : 0;
+  const y1 = typeof c1.y === 'number' ? c1.y : 0;
+  const x2 = typeof c2.x === 'number' ? c2.x : 0;
+  const y2 = typeof c2.y === 'number' ? c2.y : 0;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return EARTH_RADIUS_METERS * c;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 /**
- * Calcula el rumbo (bearing/azimut) desde el usuario hacia el objetivo respecto al Norte (0° - 360°)
+ * Calcula el rumbo plano (bearing / azimut) desde la posición del usuario hacia el objetivo (0° - 360°).
+ * Convención de navegación estándar: +Y es Norte (0°), +X es Este (90°), -Y es Sur (180°), -X es Oeste (270°).
  */
 export function calculateBearing(userCoord, targetCoord) {
-  const lat1 = toRad(userCoord.latitude);
-  const lat2 = toRad(targetCoord.latitude);
-  const dLon = toRad(targetCoord.longitude - userCoord.longitude);
+  if (!userCoord || !targetCoord) return 0;
+  const u = userCoord.coords || userCoord;
+  const t = targetCoord.coords || targetCoord;
 
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x =
-    Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const x1 = typeof u.x === 'number' ? u.x : 0;
+  const y1 = typeof u.y === 'number' ? u.y : 0;
+  const x2 = typeof t.x === 'number' ? t.x : 0;
+  const y2 = typeof t.y === 'number' ? t.y : 0;
 
-  const bearing = (toDeg(Math.atan2(y, x)) + 360) % 360;
-  return bearing;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+
+  // Si ambos puntos coinciden exactamente, mantener orientación actual
+  if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) {
+    return 0;
+  }
+
+  // atan2(dx, dy) entrega el ángulo exacto respecto al eje Y (Norte) en sentido horario
+  const bearingRad = Math.atan2(dx, dy);
+  return (toDeg(bearingRad) + 360) % 360;
 }
 
 /**
- * Desplaza una coordenada geográfica una distancia dada en metros siguiendo un rumbo (en grados).
- * Utilizado para la simulación de caminata virtual en PC.
+ * Desplaza una coordenada cartesiana una distancia dada en metros siguiendo un rumbo (en grados).
+ * Utilizado para la simulación de caminata en pasillos universitarios.
  */
 export function moveCoordinate(coord, distanceMeters, bearingDegrees) {
-  const distRatio = distanceMeters / EARTH_RADIUS_METERS;
+  if (!coord) return { x: 0, y: 0, floor: 0, altitude: 25.0 };
+  const c = coord.coords || coord;
+  const x = typeof c.x === 'number' ? c.x : 0;
+  const y = typeof c.y === 'number' ? c.y : 0;
+  const floor = c.floor !== undefined ? c.floor : (coord.floor !== undefined ? coord.floor : 0);
+  const altitude = c.altitude !== undefined ? c.altitude : (coord.altitude !== undefined ? coord.altitude : 25.0);
+
   const bearingRad = toRad(bearingDegrees);
-  const lat1 = toRad(coord.latitude);
-  const lon1 = toRad(coord.longitude);
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(distRatio) +
-    Math.cos(lat1) * Math.sin(distRatio) * Math.cos(bearingRad)
-  );
-
-  const lon2 = lon1 + Math.atan2(
-    Math.sin(bearingRad) * Math.sin(distRatio) * Math.cos(lat1),
-    Math.cos(distRatio) - Math.sin(lat1) * Math.sin(lat2)
-  );
+  const dx = distanceMeters * Math.sin(bearingRad);
+  const dy = distanceMeters * Math.cos(bearingRad);
 
   return {
-    latitude: toDeg(lat2),
-    longitude: toDeg(lon2),
-    altitude: coord.altitude || 25.0
+    x: Math.round((x + dx) * 100) / 100,
+    y: Math.round((y + dy) * 100) / 100,
+    floor,
+    altitude,
+    name: coord.name || 'Posición Actual'
   };
 }
 
 /**
- * Proyecta las coordenadas geográficas a píxeles (X, Y) en la pantalla,
+ * Proyecta la posición relativa en metros a píxeles (X, Y) en la pantalla de la cámara,
  * considerando la altura relativa de pisos para una experiencia AR tridimensional precisa.
  */
 export function projectToScreen(
