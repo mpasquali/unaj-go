@@ -223,7 +223,7 @@ export const CAMPUS_LOCATIONS = [
     floor: 0,
     color: "#0284c7",
     icon: "🏫",
-    coords: { latitude: -34.775192, longitude: -58.267908, altitude: 25.0 }
+    coords: { latitude: -34.774926, longitude: -58.267725, altitude: 25.0 }
   },
   {
     id: "secretaria-estudiantes",
