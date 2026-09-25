@@ -28,6 +28,7 @@ class UnajARApp {
     this.targetLocation = null; // Coordenadas objetivo del GPS
     this.lastAcceptedLocation = null; // Última posición estable aceptada por el umbral
     this.locationThresholdMeters = 2.5; // Umbral de estabilidad (ignora ruido satelital menor a 2.5m)
+    this.arrivalThresholdMeters = 2.0; // Umbral de proximidad de llegada a destino (distancia <= 2 metros)
     this.locationLerpFactor = 0.08; // Factor de interpolación lineal por frame (~300ms a 60 FPS)
 
     this.userHeading = 0; // Rumbo continuo renderizado en AR (suavizado con lerpAngle)
@@ -1058,6 +1059,11 @@ class UnajARApp {
     // Asegurar que no quede ningún toast flotante visible sobre la cámara
     this.hideToast();
 
+    // Asegurar que el cartel de llegada esté inactivo al comenzar la ruta
+    if (this.navArrivalBanner) {
+      this.navArrivalBanner.classList.remove('active');
+    }
+
     // Cambiar automáticamente al piso del destino si está filtrado en otro piso
     if (this.activeFloor !== 'all' && this.activeFloor !== poi.floor) {
       this.setFloor(poi.floor);
@@ -1162,16 +1168,21 @@ class UnajARApp {
     const distance = calculateDistance(this.userLocation, this.activeDestination.coords);
     const targetBearing = calculateBearing(this.userLocation, this.activeDestination.coords);
     const deltaAngle = (targetBearing - this.userHeading + 540) % 360 - 180;
+    const isArrived = distance <= this.arrivalThresholdMeters;
 
-    // Actualizar indicador numérico de distancia
+    // Actualizar indicador numérico de distancia (metros restantes en todo momento)
     if (this.navDistanceVal) {
-      this.navDistanceVal.textContent = Math.round(distance);
+      this.navDistanceVal.textContent = Math.max(0, Math.round(distance));
     }
 
-    // Tiempo estimado a pie (~1.2 metros por segundo)
+    // Tiempo estimado o estado de llegada
     if (this.navEtaText) {
-      const minutes = Math.max(1, Math.round(distance / 70));
-      this.navEtaText.textContent = distance <= 12 ? '¡Llegando!' : `~${minutes} min a pie`;
+      if (isArrived) {
+        this.navEtaText.textContent = '¡En destino!';
+      } else {
+        const minutes = Math.max(1, Math.round(distance / 70));
+        this.navEtaText.textContent = `~${minutes} min a pie`;
+      }
     }
 
     // Rotar flecha AR dinámica hacia el objetivo
@@ -1179,11 +1190,11 @@ class UnajARApp {
       this.navArrow.style.transform = `rotate(${deltaAngle}deg)`;
     }
 
-    // Instrucción de giro en tiempo real
+    // Instrucción de giro en tiempo real (mientras distance > 2m se mantiene la navegación activa en curso)
     if (this.navTurnInstruction) {
-      if (distance <= 12) {
-        this.navTurnInstruction.textContent = '🎯 ¡Frente a ti!';
-        this.navTurnInstruction.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
+      if (isArrived) {
+        this.navTurnInstruction.textContent = '🎯 ¡Has llegado!';
+        this.navTurnInstruction.style.backgroundColor = 'rgba(16, 185, 129, 0.9)'; // Verde
       } else if (Math.abs(deltaAngle) <= 18) {
         this.navTurnInstruction.textContent = '⬆️ Sigue derecho';
         this.navTurnInstruction.style.backgroundColor = 'rgba(16, 185, 129, 0.9)'; // Verde
@@ -1202,9 +1213,9 @@ class UnajARApp {
       }
     }
 
-    // Notificación visual de llegada al destino
+    // Notificación visual de llegada al destino (Únicamente cuando distance <= 2m)
     if (this.navArrivalBanner) {
-      if (distance <= 10) {
+      if (isArrived) {
         this.navArrivalBanner.classList.add('active');
       } else {
         this.navArrivalBanner.classList.remove('active');
