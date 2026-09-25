@@ -120,3 +120,32 @@ export function projectToScreen(
     elevationAngleDeg
   };
 }
+
+/**
+ * Interpolación lineal entre dos escalares continuos
+ * @param {number} start - Valor inicial
+ * @param {number} end - Valor final
+ * @param {number} factor - Factor de interpolación (0.0 a 1.0)
+ */
+export function lerp(start, end, factor) {
+  return start + (end - start) * factor;
+}
+
+/**
+ * Calcula la diferencia angular más corta entre dos rumbos en grados (-180° a +180°)
+ */
+export function shortestAngleDiff(fromAngle, toAngle) {
+  return ((toAngle - fromAngle + 540) % 360) - 180;
+}
+
+/**
+ * Interpolación angular suave entre dos ángulos en grados (0° a 360°)
+ * Maneja adecuadamente el salto circular continuo 359° <-> 0°
+ * @param {number} currentAngle - Ángulo actual en grados
+ * @param {number} targetAngle - Ángulo objetivo en grados
+ * @param {number} factor - Factor de interpolación (0.0 a 1.0)
+ */
+export function lerpAngle(currentAngle, targetAngle, factor) {
+  const diff = shortestAngleDiff(currentAngle, targetAngle);
+  return (currentAngle + diff * factor + 360) % 360;
+}

@@ -1,5 +1,13 @@
 import { SensorManager } from './sensors.js';
-import { calculateBearing, calculateDistance, projectToScreen, moveCoordinate } from './geo-math.js';
+import {
+  calculateBearing,
+  calculateDistance,
+  projectToScreen,
+  moveCoordinate,
+  lerp,
+  lerpAngle,
+  shortestAngleDiff
+} from './geo-math.js';
 import {
   CAMPUS_LOCATIONS,
   CAMPUS_FLOORS,
@@ -15,9 +23,18 @@ class UnajARApp {
   constructor() {
     this.sensorManager = new SensorManager();
 
-    // Estado principal
-    this.userLocation = null;
-    this.userHeading = 0; // Rumbo en grados (0° a 360°)
+    // Estado principal y estabilización espacial (Anti-Drift / Deadband / 60FPS Smoothing)
+    this.userLocation = null; // Coordenadas continuas renderizadas en AR (suavizadas con lerp)
+    this.targetLocation = null; // Coordenadas objetivo del GPS
+    this.lastAcceptedLocation = null; // Última posición estable aceptada por el umbral
+    this.locationThresholdMeters = 2.5; // Umbral de estabilidad (ignora ruido satelital menor a 2.5m)
+    this.locationLerpFactor = 0.08; // Factor de interpolación lineal por frame (~300ms a 60 FPS)
+
+    this.userHeading = 0; // Rumbo continuo renderizado en AR (suavizado con lerpAngle)
+    this.targetHeading = 0; // Rumbo objetivo del sensor / brújula
+    this.headingLerpFactor = 0.18; // Factor de interpolación angular continua
+    this.lastDisplayedHeading = -1; // Caché del último valor mostrado en el HUD
+
     this.activeCategory = 'todas';
     this.activeFloor = 0; // Planta Baja por defecto (0), o 'all', 1, 2, 3, 4, -1
     this.userAltitude = 25.0; // Altura base sobre nivel del mar en metros (PB)
@@ -337,19 +354,19 @@ class UnajARApp {
     // 3. Controles virtuales (Slider y botones de giro)
     if (this.compassSlider) {
       this.compassSlider.addEventListener('input', (e) => {
-        this.setHeading(parseFloat(e.target.value));
+        this.setHeading(parseFloat(e.target.value), true);
       });
     }
 
     if (this.btnTurnLeft) {
       this.btnTurnLeft.addEventListener('click', () => {
-        this.setHeading((this.userHeading - 30 + 360) % 360);
+        this.setHeading((this.userHeading - 30 + 360) % 360, true);
       });
     }
 
     if (this.btnTurnRight) {
       this.btnTurnRight.addEventListener('click', () => {
-        this.setHeading((this.userHeading + 30) % 360);
+        this.setHeading((this.userHeading + 30) % 360, true);
       });
     }
 
@@ -384,9 +401,9 @@ class UnajARApp {
       } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
         this.advanceUserPosition(-5, this.userHeading);
       } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        this.setHeading((this.userHeading - 15 + 360) % 360);
+        this.setHeading((this.userHeading - 15 + 360) % 360, true);
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        this.setHeading((this.userHeading + 15) % 360);
+        this.setHeading((this.userHeading + 15) % 360, true);
       }
     });
 
@@ -404,12 +421,15 @@ class UnajARApp {
         const pointKey = e.target.value;
         const selected = SIMULATION_START_POINTS[pointKey];
         if (selected) {
-          this.userLocation = {
+          const loc = {
             latitude: selected.latitude,
             longitude: selected.longitude,
             altitude: selected.altitude,
             accuracy: 5
           };
+          this.userLocation = { ...loc };
+          this.targetLocation = { ...loc };
+          this.lastAcceptedLocation = { ...loc };
           if (this.hudGps) {
             this.hudGps.textContent = selected.name.split('(')[0].trim();
           }
@@ -431,7 +451,7 @@ class UnajARApp {
       const deltaX = e.clientX - this.lastPointerX;
       this.lastPointerX = e.clientX;
       const angleChange = deltaX * 0.25;
-      this.setHeading((this.userHeading - angleChange + 360) % 360);
+      this.setHeading((this.userHeading - angleChange + 360) % 360, true);
     });
 
     window.addEventListener('pointerup', () => {
@@ -754,7 +774,10 @@ class UnajARApp {
    */
   advanceUserPosition(meters, bearingDegrees) {
     if (!this.userLocation) return;
-    this.userLocation = moveCoordinate(this.userLocation, meters, bearingDegrees);
+    const moved = moveCoordinate(this.userLocation, meters, bearingDegrees);
+    this.userLocation = { ...moved };
+    this.targetLocation = { ...moved };
+    this.lastAcceptedLocation = { ...moved };
     if (this.hudGps) {
       this.hudGps.textContent = `Paseo Virtual (GPS Simulado)`;
     }
@@ -770,6 +793,9 @@ class UnajARApp {
     if (!this.destPickerModal) return;
 
     this.destPickerModal.classList.add('active');
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.add('modal-open');
+    }
 
     // Sincronizar estado visual de los botones de categoría
     const allCategoryButtons = document.querySelectorAll('.modal-filter-btn, .filter-btn');
@@ -791,6 +817,12 @@ class UnajARApp {
   closeDestinationPicker() {
     if (this.destPickerModal) {
       this.destPickerModal.classList.remove('active');
+    }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('modal-open');
+    }
+    if (this.destSearchInput) {
+      this.destSearchInput.blur();
     }
     this.setLoading(false);
   }
@@ -1211,15 +1243,21 @@ class UnajARApp {
     }
   }
 
-  setHeading(newHeading) {
-    this.userHeading = Math.round(newHeading) % 360;
-    if (this.compassSlider) {
-      this.compassSlider.value = this.userHeading;
+  setHeading(newHeading, immediate = false) {
+    const normalized = ((newHeading % 360) + 360) % 360;
+    this.targetHeading = normalized;
+    if (immediate) {
+      this.userHeading = normalized;
+      this.lastDisplayedHeading = -1; // forzar refresco del HUD
+    }
+    const rounded = Math.round(this.userHeading);
+    if (this.compassSlider && immediate && !this.isDragging) {
+      this.compassSlider.value = rounded;
     }
     if (this.hudHeading) {
-      const cardinal = this.getCardinalDirection(this.userHeading);
+      const cardinal = this.getCardinalDirection(rounded);
       const modeLabel = this.isCompassWorking ? '' : ' (Manual)';
-      this.hudHeading.textContent = `${this.userHeading}° (${cardinal})${modeLabel}`;
+      this.hudHeading.textContent = `${rounded}° (${cardinal})${modeLabel}`;
     }
   }
 
@@ -1385,13 +1423,16 @@ class UnajARApp {
       try {
         const initialPos = await this.sensorManager.requestInitialLocation();
         if (initialPos && initialPos.coords) {
-          this.userLocation = {
+          const loc = {
             latitude: initialPos.coords.latitude,
             longitude: initialPos.coords.longitude,
             altitude: initialPos.coords.altitude || 25.0,
             accuracy: initialPos.coords.accuracy,
             isTemporary: false
           };
+          this.userLocation = { ...loc };
+          this.targetLocation = { ...loc };
+          this.lastAcceptedLocation = { ...loc };
           if (this.hudGps) {
             this.hudGps.textContent = `±${Math.round(initialPos.coords.accuracy)}m`;
           }
@@ -1410,13 +1451,16 @@ class UnajARApp {
         }
 
         // Si fue timeout o precisión temporal, usar ubicación base del campus mientras se busca señal satelital
-        this.userLocation = {
+        const fallbackLoc = {
           latitude: SIMULATION_START_POINTS.plaza_central.latitude,
           longitude: SIMULATION_START_POINTS.plaza_central.longitude,
           altitude: 25.0,
           accuracy: 50,
           isTemporary: true
         };
+        this.userLocation = { ...fallbackLoc };
+        this.targetLocation = { ...fallbackLoc };
+        this.lastAcceptedLocation = { ...fallbackLoc };
         if (this.hudGps) {
           this.hudGps.textContent = 'GPS: Buscando señal...';
         }
@@ -1436,7 +1480,7 @@ class UnajARApp {
           this.sensorManager.startOrientation(
             (orientation) => {
               this.isCompassWorking = true;
-              this.setHeading(orientation.heading);
+              this.setHeading(orientation.heading, false); // Interpolación suave continua
             },
             (error) => {
               console.warn('Aviso en sensores de orientación:', error);
@@ -1449,17 +1493,37 @@ class UnajARApp {
         }
       }
 
-      // 5. Iniciar geolocalización continua en segundo plano
+      // 5. Iniciar geolocalización continua en segundo plano con umbral de estabilidad (2.5m)
       try {
         this.sensorManager.startGeolocation(
           (location) => {
-            this.userLocation = {
+            const newTarget = {
               latitude: location.latitude,
               longitude: location.longitude,
               altitude: location.altitude || 25.0,
               accuracy: location.accuracy,
               isTemporary: false
             };
+
+            // Primera asignación si aún no estaba inicializada
+            if (!this.userLocation) {
+              this.userLocation = { ...newTarget };
+              this.targetLocation = { ...newTarget };
+              this.lastAcceptedLocation = { ...newTarget };
+            } else {
+              // Umbral de estabilidad (2.5m) contra ruido satelital cuando el usuario está quieto
+              const dist = this.lastAcceptedLocation
+                ? calculateDistance(this.lastAcceptedLocation, newTarget)
+                : 999;
+
+              if (dist >= this.locationThresholdMeters && !location.isStationary) {
+                this.targetLocation = { ...newTarget };
+                this.lastAcceptedLocation = { ...newTarget };
+              } else if (this.targetLocation) {
+                this.targetLocation.accuracy = location.accuracy;
+              }
+            }
+
             if (this.hudGps) {
               this.hudGps.textContent = `±${Math.round(location.accuracy)}m`;
             }
@@ -1504,12 +1568,70 @@ class UnajARApp {
         }
       }
 
+      // Suavizado continuo por interpolación lineal a 60 FPS (GPS + Brújula)
+      this.updateSpatialSmoothing();
+
       this.updateMarkers();
       this.updateNavigationHUD();
     } catch (loopErr) {
       console.error('Aviso en renderLoop:', loopErr);
     } finally {
       requestAnimationFrame(() => this.renderLoop());
+    }
+  }
+
+  /**
+   * Suavizado e interpolación espacial continua ejecutada a 60 FPS
+   * Aplica lerp para coordenadas geográficas y lerpAngle para el rumbo,
+   * eliminando la deriva, temblores y saltos de golpe en la pantalla.
+   */
+  updateSpatialSmoothing() {
+    // 1. Suavizado e interpolación de coordenadas GPS a 60 FPS
+    if (this.targetLocation && this.userLocation) {
+      const dist = calculateDistance(this.userLocation, this.targetLocation);
+      if (dist > 0.02) {
+        this.userLocation.latitude = lerp(
+          this.userLocation.latitude,
+          this.targetLocation.latitude,
+          this.locationLerpFactor
+        );
+        this.userLocation.longitude = lerp(
+          this.userLocation.longitude,
+          this.targetLocation.longitude,
+          this.locationLerpFactor
+        );
+        const curAlt = this.userLocation.altitude !== undefined ? this.userLocation.altitude : 25.0;
+        const tgtAlt = this.targetLocation.altitude !== undefined ? this.targetLocation.altitude : 25.0;
+        this.userLocation.altitude = lerp(curAlt, tgtAlt, this.locationLerpFactor);
+      } else {
+        this.userLocation.latitude = this.targetLocation.latitude;
+        this.userLocation.longitude = this.targetLocation.longitude;
+        this.userLocation.altitude = this.targetLocation.altitude;
+      }
+    }
+
+    // 2. Suavizado e interpolación angular continua de la brújula a 60 FPS
+    if (typeof this.targetHeading === 'number') {
+      const angleDiff = shortestAngleDiff(this.userHeading, this.targetHeading);
+      if (Math.abs(angleDiff) > 0.3) {
+        this.userHeading = lerpAngle(this.userHeading, this.targetHeading, this.headingLerpFactor);
+      } else {
+        this.userHeading = this.targetHeading;
+      }
+
+      // Actualizar visualización del HUD solo cuando el valor entero cambia
+      const roundedHeading = Math.round(this.userHeading);
+      if (roundedHeading !== this.lastDisplayedHeading) {
+        this.lastDisplayedHeading = roundedHeading;
+        if (this.compassSlider && !this.isDragging) {
+          this.compassSlider.value = roundedHeading;
+        }
+        if (this.hudHeading) {
+          const cardinal = this.getCardinalDirection(roundedHeading);
+          const modeLabel = this.isCompassWorking ? '' : ' (Manual)';
+          this.hudHeading.textContent = `${roundedHeading}° (${cardinal})${modeLabel}`;
+        }
+      }
     }
   }
 

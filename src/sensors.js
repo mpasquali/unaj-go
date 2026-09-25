@@ -3,6 +3,8 @@
  * Con soporte robusto para iOS 13+, Android Chrome y detección de fallos/tiempos de espera.
  */
 
+import { calculateDistance } from './geo-math.js';
+
 export class SensorManager {
   constructor() {
     this.videoElement = null;
@@ -23,6 +25,12 @@ export class SensorManager {
     // Filtro de suavizado para el rumbo (Low-Pass Filter)
     this.currentHeading = null;
     this.smoothingFactor = 0.22; // Suavidad óptima entre latencia y estabilidad
+
+    // Filtro de suavizado y estabilidad GPS (Anti-Drift / Deadband / Low-Pass)
+    this.filteredLocation = null;
+    this.lastStableLocation = null;
+    this.locationThresholdMeters = 2.5; // Umbral de estabilidad: ignora ruido < 2.5m
+    this.locationSmoothingAlpha = 0.40; // Factor pasa-bajos (EMA) para transiciones suaves
   }
 
   /**
@@ -300,7 +308,11 @@ export class SensorManager {
           let diff = rawHeading - this.currentHeading;
           if (diff > 180) diff -= 360;
           if (diff < -180) diff += 360;
-          this.currentHeading = (this.currentHeading + diff * this.smoothingFactor + 360) % 360;
+          
+          // Umbral de estabilidad angular: suprimir micro-ruido (< 0.4°) cuando el usuario sostiene el celular quieto
+          if (Math.abs(diff) >= 0.4) {
+            this.currentHeading = (this.currentHeading + diff * this.smoothingFactor + 360) % 360;
+          }
         }
 
         if (this.onOrientationUpdate) {
@@ -372,13 +384,74 @@ export class SensorManager {
     try {
       this.watchId = navigator.geolocation.watchPosition(
         (position) => {
+          const rawLat = position.coords.latitude;
+          const rawLon = position.coords.longitude;
+          const rawAlt = position.coords.altitude || 25.0;
+          const accuracy = position.coords.accuracy;
+
+          const rawCoord = {
+            latitude: rawLat,
+            longitude: rawLon,
+            altitude: rawAlt,
+            accuracy
+          };
+
+          // 1. Filtrado de valores atípicos (outlier rejection):
+          // Si ya disponemos de una posición de buena precisión (< 40m) y llega un paquete con precisión muy deficiente (> 65m), descartar.
+          if (
+            this.lastStableLocation &&
+            this.lastStableLocation.accuracy &&
+            this.lastStableLocation.accuracy <= 40 &&
+            accuracy > 65
+          ) {
+            console.warn('Lectura GPS descartada por baja precisión / anomalía:', accuracy);
+            return;
+          }
+
+          // 2. Primera lectura recibida: inicializar posiciones de referencia
+          if (!this.lastStableLocation || !this.filteredLocation) {
+            this.lastStableLocation = { ...rawCoord };
+            this.filteredLocation = { ...rawCoord };
+            if (this.onLocationUpdate) {
+              this.onLocationUpdate({
+                ...this.filteredLocation,
+                isStationary: false
+              });
+            }
+            return;
+          }
+
+          // 3. Umbral de Estabilidad (Deadband de 2.5 metros):
+          // Ignorar variaciones menores a 2.5 metros causadas por ruido satelital cuando el usuario está quieto.
+          const distFromStable = calculateDistance(this.lastStableLocation, rawCoord);
+
+          if (distFromStable < this.locationThresholdMeters) {
+            // Usuario estacionario/quieto: congelar las coordenadas para evitar deriva y temblores
+            this.filteredLocation.accuracy = accuracy;
+            if (this.onLocationUpdate) {
+              this.onLocationUpdate({
+                ...this.filteredLocation,
+                isStationary: true
+              });
+            }
+            return;
+          }
+
+          // 4. Si el desplazamiento supera el umbral (>= 2.5m), el usuario efectivamente caminó.
+          // Aplicar filtro pasa-bajos (EMA) para suavizar la transición y evitar saltos abruptos.
+          const alpha = this.locationSmoothingAlpha;
+          this.filteredLocation = {
+            latitude: this.filteredLocation.latitude + (rawLat - this.filteredLocation.latitude) * alpha,
+            longitude: this.filteredLocation.longitude + (rawLon - this.filteredLocation.longitude) * alpha,
+            altitude: this.filteredLocation.altitude + (rawAlt - this.filteredLocation.altitude) * alpha,
+            accuracy,
+            isStationary: false
+          };
+
+          this.lastStableLocation = { ...rawCoord };
+
           if (this.onLocationUpdate) {
-            this.onLocationUpdate({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              altitude: position.coords.altitude || 25.0
-            });
+            this.onLocationUpdate(this.filteredLocation);
           }
         },
         (error) => {
@@ -401,6 +474,9 @@ export class SensorManager {
    * Libera todos los recursos y listeners de sensores
    */
   stopAll() {
+    this.filteredLocation = null;
+    this.lastStableLocation = null;
+
     if (this.orientationTimeoutId) {
       clearTimeout(this.orientationTimeoutId);
       this.orientationTimeoutId = null;
