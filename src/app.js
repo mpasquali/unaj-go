@@ -33,6 +33,7 @@ class UnajARApp {
 
     this.userHeading = 0; // Rumbo continuo renderizado en AR (suavizado con lerpAngle)
     this.targetHeading = 0; // Rumbo objetivo del sensor / brújula
+    this.headingDeadbandDegrees = 3.5; // Umbral mínimo de ruido angular en iOS/Android (ignora cambios < 3.5°)
     this.headingLerpFactor = 0.18; // Factor de interpolación angular continua
     this.lastDisplayedHeading = -1; // Caché del último valor mostrado en el HUD
 
@@ -64,6 +65,8 @@ class UnajARApp {
     this.markerElements = new Map();
     this.permissionModal = document.getElementById('permission-modal');
     this.btnStart = document.getElementById('btn-start');
+    this.btnCalibrateCompass = document.getElementById('btn-calibrate-compass');
+    this.btnCalibrateCompassBanner = document.getElementById('btn-calibrate-compass-banner');
 
     // Notificaciones / Toast
     this.toastEl = document.getElementById('status-toast');
@@ -293,31 +296,64 @@ class UnajARApp {
   }
 
   initEvents() {
-    // 1. Inicio de la aplicación (Cámara y Sensores)
+    // 1. Inicio de la aplicación (Cámara y Sensores bajo gesto táctil explícito)
     let startHandled = false;
     const triggerStart = (e) => {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        if (e.cancelable && e.type === 'touchend') e.preventDefault();
+      }
       if (startHandled) return;
       startHandled = true;
-      this.startApp();
+
+      // Disparo síncrono bajo el gesto del usuario (Requisito estricto de iOS WebKit / Safari)
+      const orientationPermPromise = SensorManager.requestDeviceOrientationPermission().catch((err) => {
+        console.warn('Captura síncrona de permiso DeviceOrientation:', err);
+        return { supported: true, granted: false, error: err.message };
+      });
+
+      this.startApp(orientationPermPromise);
       setTimeout(() => { startHandled = false; }, 1000);
     };
 
     if (this.btnStart) {
+      this.btnStart.onclick = triggerStart;
       this.btnStart.addEventListener('click', triggerStart);
-      this.btnStart.addEventListener('touchend', triggerStart, { passive: true });
+      this.btnStart.addEventListener('touchend', triggerStart, { passive: false });
     }
 
     // Reintento de permisos tras habilitarlos en Safari / Chrome
     if (this.btnRetryPermissions) {
       const handleRetry = (e) => {
-        if (e) e.stopPropagation();
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable && e.type === 'touchend') e.preventDefault();
+        }
         this.hidePermissionDeniedModal();
-        this.startApp();
+        const orientationPermPromise = SensorManager.requestDeviceOrientationPermission().catch((err) => {
+          return { supported: true, granted: false, error: err.message };
+        });
+        this.startApp(orientationPermPromise);
       };
       this.btnRetryPermissions.addEventListener('click', handleRetry);
       this.btnRetryPermissions.addEventListener('touchend', handleRetry, { passive: false });
     }
+
+    // Botones dedicados para Calibrar / Reactivar Brújula (iOS / Android)
+    const bindCalibrate = (btn) => {
+      if (!btn) return;
+      const handleCalibrate = (e) => {
+        if (e) {
+          e.stopPropagation();
+          if (e.cancelable && e.type === 'touchend') e.preventDefault();
+        }
+        this.calibrateCompass();
+      };
+      btn.addEventListener('click', handleCalibrate);
+      btn.addEventListener('touchend', handleCalibrate, { passive: false });
+    };
+    bindCalibrate(this.btnCalibrateCompass);
+    bindCalibrate(this.btnCalibrateCompassBanner);
 
     if (this.btnCloseToast) {
       this.btnCloseToast.addEventListener('click', () => this.hideToast());
@@ -1257,10 +1293,17 @@ class UnajARApp {
 
   setHeading(newHeading, immediate = false) {
     const normalized = ((newHeading % 360) + 360) % 360;
-    this.targetHeading = normalized;
     if (immediate) {
+      this.targetHeading = normalized;
       this.userHeading = normalized;
       this.lastDisplayedHeading = -1; // forzar refresco del HUD
+    } else {
+      // Umbral mínimo de ruido angular (Deadband de 3.5°):
+      // Si la rotación cambia por debajo de 3.5 grados, se ignora el cambio para evitar temblores
+      const diff = shortestAngleDiff(this.targetHeading, normalized);
+      if (Math.abs(diff) >= this.headingDeadbandDegrees) {
+        this.targetHeading = normalized;
+      }
     }
     const rounded = Math.round(this.userHeading);
     if (this.compassSlider && immediate && !this.isDragging) {
@@ -1382,7 +1425,7 @@ class UnajARApp {
     }
   }
 
-  async startApp() {
+  async startApp(preRequestedOrientationPerm = null) {
     if (this.isStarting || this.isStarted) return;
     this.isStarting = true;
 
@@ -1397,7 +1440,9 @@ class UnajARApp {
       // 1. Permiso de orientación (iOS 13+ y multiplataforma bajo gesto táctil)
       let orientationPerm = { supported: false, granted: false };
       try {
-        orientationPerm = await SensorManager.requestDeviceOrientationPermission();
+        orientationPerm = preRequestedOrientationPerm
+          ? await preRequestedOrientationPerm
+          : await SensorManager.requestDeviceOrientationPermission();
       } catch (permError) {
         console.warn('Aviso en solicitud de permisos de orientación:', permError);
       }
@@ -1625,7 +1670,7 @@ class UnajARApp {
     // 2. Suavizado e interpolación angular continua de la brújula a 60 FPS
     if (typeof this.targetHeading === 'number') {
       const angleDiff = shortestAngleDiff(this.userHeading, this.targetHeading);
-      if (Math.abs(angleDiff) > 0.3) {
+      if (Math.abs(angleDiff) > 0.05) {
         this.userHeading = lerpAngle(this.userHeading, this.targetHeading, this.headingLerpFactor);
       } else {
         this.userHeading = this.targetHeading;
@@ -1716,6 +1761,38 @@ class UnajARApp {
         this.btnRetryCamera.disabled = false;
         this.btnRetryCamera.textContent = '📷 Reintentar';
       }
+    }
+  }
+
+  /**
+   * Calibra y reactiva la brújula y sensores de orientación bajo interacción explícita
+   */
+  async calibrateCompass() {
+    this.showToast('🧭 Calibrando sensores...', 2500);
+    try {
+      const perm = await SensorManager.requestDeviceOrientationPermission();
+      if (perm.granted) {
+        this.sensorManager.startOrientation(
+          (orientation) => {
+            this.isCompassWorking = true;
+            this.setHeading(orientation.heading, false);
+            if (this.virtualControls) {
+              this.virtualControls.classList.remove('visible');
+            }
+            this.hideFallbackBanner();
+          },
+          (error) => {
+            console.warn('Error en calibración de orientación:', error);
+            this.activateManualRotationFallback('Orientación manual activa tras calibrar.');
+          }
+        );
+        this.showToast('✅ Brújula calibrada y activa', 3000);
+      } else {
+        this.activateManualRotationFallback('Permiso de sensores no concedido. Usa controles manuales.');
+      }
+    } catch (err) {
+      console.warn('Fallo al calibrar brújula:', err);
+      this.activateManualRotationFallback('No se pudo calibrar la brújula.');
     }
   }
 

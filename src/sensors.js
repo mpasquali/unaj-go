@@ -3,7 +3,7 @@
  * Con soporte robusto para iOS 13+, Android Chrome y detección de fallos/tiempos de espera.
  */
 
-import { calculateDistance } from './geo-math.js';
+import { calculateDistance, shortestAngleDiff } from './geo-math.js';
 
 export class SensorManager {
   constructor() {
@@ -22,15 +22,76 @@ export class SensorManager {
     this.orientationTimeoutId = null;
     this.hasReceivedOrientationData = false;
 
-    // Filtro de suavizado para el rumbo (Low-Pass Filter)
+    // Filtro de suavizado avanzado para el rumbo (Multi-Eje + Deadband de 3.5°)
     this.currentHeading = null;
+    this.lastReportedHeading = null;
+    this.currentPitch = 0;
+    this.currentRoll = 0;
+    this.orientationDeadband = 3.5; // Ignora variaciones menores a 3.5° (elimina temblores en iOS)
     this.smoothingFactor = 0.22; // Suavidad óptima entre latencia y estabilidad
 
-    // Filtro de suavizado y estabilidad GPS (Anti-Drift / Deadband / Low-Pass)
+    // Historial y Buffer de GPS (Media Ponderada contra Safari GPS drift)
+    this.gpsBuffer = [];
+    this.maxGpsBufferSize = 4; // Almacena las últimas 3 o 4 lecturas válidas
     this.filteredLocation = null;
     this.lastStableLocation = null;
     this.locationThresholdMeters = 2.5; // Umbral de estabilidad: ignora ruido < 2.5m
     this.locationSmoothingAlpha = 0.40; // Factor pasa-bajos (EMA) para transiciones suaves
+  }
+
+  /**
+   * Calcula una media ponderada del buffer de coordenadas GPS.
+   * Pondera con mayor peso las muestras más recientes y con mejor precisión (menor error en metros).
+   * @param {Array} buffer - Array de lecturas GPS [{ latitude, longitude, altitude, accuracy, timestamp }]
+   */
+  static calculateWeightedGpsCoord(buffer) {
+    if (!buffer || buffer.length === 0) return null;
+    if (buffer.length === 1) return { ...buffer[0] };
+
+    let totalWeight = 0;
+    let sumLat = 0;
+    let sumLon = 0;
+    let sumAlt = 0;
+    let minAccuracy = Infinity;
+
+    for (let i = 0; i < buffer.length; i++) {
+      const sample = buffer[i];
+      // Peso por recencia temporal: 1, 2, 3, 4 (las muestras más frescas tienen mayor prioridad)
+      const recencyWeight = i + 1;
+      // Peso por precisión inversa: menor error en metros = mayor fiabilidad
+      const acc = Math.max(sample.accuracy || 10, 2);
+      const accWeight = 1 / acc;
+
+      const weight = recencyWeight * accWeight;
+      totalWeight += weight;
+
+      sumLat += sample.latitude * weight;
+      sumLon += sample.longitude * weight;
+      sumAlt += (sample.altitude || 25.0) * weight;
+
+      if (sample.accuracy && sample.accuracy < minAccuracy) {
+        minAccuracy = sample.accuracy;
+      }
+    }
+
+    if (totalWeight <= 0) return { ...buffer[buffer.length - 1] };
+
+    const lastSample = buffer[buffer.length - 1];
+
+    return {
+      latitude: sumLat / totalWeight,
+      longitude: sumLon / totalWeight,
+      altitude: sumAlt / totalWeight,
+      accuracy: lastSample.accuracy || (minAccuracy !== Infinity ? minAccuracy : 10),
+      timestamp: lastSample.timestamp || Date.now()
+    };
+  }
+
+  /**
+   * Delegación de instancia para media ponderada del buffer GPS
+   */
+  calculateWeightedGpsCoord(buffer) {
+    return SensorManager.calculateWeightedGpsCoord(buffer || this.gpsBuffer);
   }
 
   /**
@@ -300,18 +361,31 @@ export class SensorManager {
           this.orientationTimeoutId = null;
         }
 
-        // Filtro pasa-bajos exponencial para eliminar el temblor (jitter)
+        // 1. Inicialización en primera lectura válida
         if (this.currentHeading === null) {
           this.currentHeading = rawHeading;
+          this.lastReportedHeading = rawHeading;
+          this.currentPitch = event.beta || 0;
+          this.currentRoll = event.gamma || 0;
         } else {
-          // Compensación para el salto angular 359° <-> 0°
-          let diff = rawHeading - this.currentHeading;
-          if (diff > 180) diff -= 360;
-          if (diff < -180) diff += 360;
-          
-          // Umbral de estabilidad angular: suprimir micro-ruido (< 0.4°) cuando el usuario sostiene el celular quieto
-          if (Math.abs(diff) >= 0.4) {
+          // 2. Umbral mínimo de ruido angular (Deadband de 3.5°):
+          // Si la rotación cambia por debajo de 3.5 grados, se ignora el cambio para evitar temblores
+          const diffFromReported = shortestAngleDiff(this.lastReportedHeading, rawHeading);
+
+          if (Math.abs(diffFromReported) >= this.orientationDeadband) {
+            const diff = shortestAngleDiff(this.currentHeading, rawHeading);
             this.currentHeading = (this.currentHeading + diff * this.smoothingFactor + 360) % 360;
+            this.lastReportedHeading = this.currentHeading;
+          }
+
+          // 3. Suavizado en pitch (inclinación frontal / beta) y roll (balanceo lateral / gamma)
+          const rawPitch = event.beta || 0;
+          const rawRoll = event.gamma || 0;
+          if (Math.abs(rawPitch - this.currentPitch) >= 3.0) {
+            this.currentPitch += (rawPitch - this.currentPitch) * this.smoothingFactor;
+          }
+          if (Math.abs(rawRoll - this.currentRoll) >= 3.0) {
+            this.currentRoll += (rawRoll - this.currentRoll) * this.smoothingFactor;
           }
         }
 
@@ -319,8 +393,8 @@ export class SensorManager {
           this.onOrientationUpdate({
             heading: this.currentHeading,
             rawHeading,
-            pitch: event.beta || 0,
-            roll: event.gamma || 0,
+            pitch: this.currentPitch,
+            roll: this.currentRoll,
             isTrueHeading
           });
         }
@@ -408,10 +482,19 @@ export class SensorManager {
             return;
           }
 
-          // 2. Primera lectura recibida: inicializar posiciones de referencia
+          // 2. Almacenar en el buffer de historial de GPS (máximo 4 muestras)
+          this.gpsBuffer.push({ ...rawCoord, timestamp: Date.now() });
+          if (this.gpsBuffer.length > this.maxGpsBufferSize) {
+            this.gpsBuffer.shift();
+          }
+
+          // 3. Calcular la media ponderada del buffer (combina recencia temporal y precisión inversa)
+          const weightedCoord = SensorManager.calculateWeightedGpsCoord(this.gpsBuffer);
+
+          // 4. Primera lectura recibida: inicializar posiciones de referencia
           if (!this.lastStableLocation || !this.filteredLocation) {
-            this.lastStableLocation = { ...rawCoord };
-            this.filteredLocation = { ...rawCoord };
+            this.lastStableLocation = { ...weightedCoord };
+            this.filteredLocation = { ...weightedCoord };
             if (this.onLocationUpdate) {
               this.onLocationUpdate({
                 ...this.filteredLocation,
@@ -421,13 +504,13 @@ export class SensorManager {
             return;
           }
 
-          // 3. Umbral de Estabilidad (Deadband de 2.5 metros):
+          // 5. Umbral de Estabilidad (Deadband de 2.5 metros):
           // Ignorar variaciones menores a 2.5 metros causadas por ruido satelital cuando el usuario está quieto.
-          const distFromStable = calculateDistance(this.lastStableLocation, rawCoord);
+          const distFromStable = calculateDistance(this.lastStableLocation, weightedCoord);
 
           if (distFromStable < this.locationThresholdMeters) {
             // Usuario estacionario/quieto: congelar las coordenadas para evitar deriva y temblores
-            this.filteredLocation.accuracy = accuracy;
+            this.filteredLocation.accuracy = weightedCoord.accuracy;
             if (this.onLocationUpdate) {
               this.onLocationUpdate({
                 ...this.filteredLocation,
@@ -437,18 +520,18 @@ export class SensorManager {
             return;
           }
 
-          // 4. Si el desplazamiento supera el umbral (>= 2.5m), el usuario efectivamente caminó.
+          // 6. Si el desplazamiento supera el umbral (>= 2.5m), el usuario efectivamente caminó.
           // Aplicar filtro pasa-bajos (EMA) para suavizar la transición y evitar saltos abruptos.
           const alpha = this.locationSmoothingAlpha;
           this.filteredLocation = {
-            latitude: this.filteredLocation.latitude + (rawLat - this.filteredLocation.latitude) * alpha,
-            longitude: this.filteredLocation.longitude + (rawLon - this.filteredLocation.longitude) * alpha,
-            altitude: this.filteredLocation.altitude + (rawAlt - this.filteredLocation.altitude) * alpha,
-            accuracy,
+            latitude: this.filteredLocation.latitude + (weightedCoord.latitude - this.filteredLocation.latitude) * alpha,
+            longitude: this.filteredLocation.longitude + (weightedCoord.longitude - this.filteredLocation.longitude) * alpha,
+            altitude: this.filteredLocation.altitude + (weightedCoord.altitude - this.filteredLocation.altitude) * alpha,
+            accuracy: weightedCoord.accuracy,
             isStationary: false
           };
 
-          this.lastStableLocation = { ...rawCoord };
+          this.lastStableLocation = { ...weightedCoord };
 
           if (this.onLocationUpdate) {
             this.onLocationUpdate(this.filteredLocation);
@@ -474,8 +557,11 @@ export class SensorManager {
    * Libera todos los recursos y listeners de sensores
    */
   stopAll() {
+    this.gpsBuffer = [];
     this.filteredLocation = null;
     this.lastStableLocation = null;
+    this.currentHeading = null;
+    this.lastReportedHeading = null;
 
     if (this.orientationTimeoutId) {
       clearTimeout(this.orientationTimeoutId);
